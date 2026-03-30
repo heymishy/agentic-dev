@@ -5,10 +5,8 @@
   "scripts": {
     "build": "tsc --noEmit",
     "test": "jest --testPathIgnorePatterns=integration",
-    "test:integration": "jest --testPathPattern=integration"
-  },
-  "dependencies": {
-    "node-fetch": "^3.3.2"
+    "test:integration": "jest --testPathPattern=integration --testTimeout=5000",
+    "init-queue": "bash scripts/init-queue.sh"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
@@ -20,6 +18,6 @@
   "jest": {
     "preset": "ts-jest",
     "testEnvironment": "node",
-    "testMatch": ["**/tests/**/*.test.ts"]
+    "testMatch": ["**/tests/**/*.test.ts", "**/tests/**/*.integration.test.ts"]
   }
 }
