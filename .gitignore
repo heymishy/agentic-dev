@@ -1,0 +1,18 @@
+# Worktrees — never commit, never push
+.worktrees/
+
+# Node
+node_modules/
+dist/
+*.js.map
+
+# TypeScript build
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db

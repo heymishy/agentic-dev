@@ -1,0 +1,57 @@
+# Standards Index
+#
+# This file maps domain tags to standards documents.
+# The /definition-of-ready skill reads this file and injects matching
+# standards into the coding agent instructions block.
+#
+# Usage:
+#   - Add domains that apply to your codebase
+#   - Under each domain, list the path to zero or more standards files
+#   - Standards files live in .github/standards/[domain]/
+#   - Each standards file is a markdown file with concrete rules
+#
+# When a story has a domain tag matching a key here, /definition-of-ready
+# will include all standards files for that domain in the coding agent
+# instructions block.
+#
+# Example domain tags on a story:
+#   domain: [api, auth]     → injects api.md + auth.md standards
+#   domain: [data]          → injects data.md standards
+#   domain: [payments]      → injects payments.md + pci.md standards
+
+standards:
+
+  api:
+    description: REST API design and versioning rules
+    files:
+      - .github/standards/api/api-design.md
+      # - .github/standards/api/versioning.md
+
+  auth:
+    description: Authentication and authorisation standards
+    files:
+      - .github/standards/auth/auth-patterns.md
+      # - .github/standards/auth/session-management.md
+
+  data:
+    description: Data modelling, validation, and residency standards
+    files:
+      - .github/standards/data/data-standards.md
+
+  payments:
+    description: Payment processing constraints (PCI-DSS, tokenisation, retry limits)
+    files:
+      - .github/standards/payments/payments-standards.md
+
+  ui:
+    description: Frontend component and accessibility standards
+    files:
+      - .github/standards/ui/ui-standards.md
+
+  security:
+    description: Cross-cutting security standards (OWASP, input validation, secrets)
+    files:
+      - .github/standards/security/security-standards.md
+
+# Fallback: if a story has no domain tag, or its domain is not listed here,
+# no standards are injected. This is acceptable — not all stories need explicit standards.

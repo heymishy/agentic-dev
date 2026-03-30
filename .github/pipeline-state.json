@@ -1,0 +1,188 @@
+{
+  "version": "1",
+  "updated": "2026-03-30T00:00:00Z",
+  "programmes": [],
+  "features": [
+    {
+      "slug": "2026-03-30-agentic-sdlc-prototype",
+      "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
+      "stage": "definition-of-ready",
+      "health": "green",
+      "updatedAt": "2026-03-31T00:00:00Z",
+      "dorStatus": {
+        "s1-three-agent-bare-loop": "signed-off",
+        "s2-dev-agent-skill-trace": "signed-off",
+        "s3-review-agent-trace-validation": "signed-off",
+        "s4-assurance-agent-cold-start": "signed-off",
+        "s5-injected-failure-detection": "signed-off",
+        "s6-trace-schema-tamper-evidence": "signed-off",
+        "s7-self-service-packaging": "signed-off"
+      },
+      "testPlans": {
+        "s1-three-agent-bare-loop": {
+          "status": "written",
+          "totalTests": 9,
+          "passing": 0,
+          "acTotal": 5,
+          "acVerified": 0,
+          "hasLayoutDependentGaps": false,
+          "e2eToolingRequired": false,
+          "notes": "Integration tests require Docker Compose (@integration tag); unit tests are Docker-free"
+        },
+        "s2-dev-agent-skill-trace": {
+          "status": "written",
+          "totalTests": 11,
+          "passing": 0,
+          "acTotal": 6,
+          "acVerified": 0,
+          "hasLayoutDependentGaps": false,
+          "e2eToolingRequired": false
+        },
+        "s3-review-agent-trace-validation": {
+          "status": "written",
+          "totalTests": 11,
+          "passing": 0,
+          "acTotal": 5,
+          "acVerified": 0,
+          "hasLayoutDependentGaps": false,
+          "e2eToolingRequired": false
+        },
+        "s4-assurance-agent-cold-start": {
+          "status": "written",
+          "totalTests": 15,
+          "passing": 0,
+          "acTotal": 5,
+          "acVerified": 0,
+          "hasLayoutDependentGaps": false,
+          "e2eToolingRequired": false,
+          "notes": "ADR-001 logged 2026-03-31 — Decisions Gate closed. Added cold-start independence integration test (stale-file-replacement analog). S4/S5 boundary explicit in Out of Scope."
+        },
+        "s5-injected-failure-detection": {
+          "status": "written",
+          "totalTests": 0,
+          "passing": 0,
+          "acTotal": 5,
+          "acVerified": 0,
+          "hasLayoutDependentGaps": false,
+          "e2eToolingRequired": false,
+          "notes": "Fully manual test protocol by design — artefact is verification/m3-test-results.md"
+        },
+        "s6-trace-schema-tamper-evidence": {
+          "status": "written",
+          "totalTests": 1,
+          "passing": 0,
+          "acTotal": 5,
+          "acVerified": 0,
+          "hasLayoutDependentGaps": false,
+          "e2eToolingRequired": false,
+          "notes": "1 automated test (tsc --strict); AC1-AC4 are manual protocols; artefacts: verification/m5-test-results.md + verification/m6-test-results.md"
+        },
+        "s7-self-service-packaging": {
+          "status": "written",
+          "totalTests": 1,
+          "passing": 0,
+          "acTotal": 5,
+          "acVerified": 0,
+          "hasLayoutDependentGaps": false,
+          "e2eToolingRequired": false,
+          "notes": "1 automated test (Docker Compose health check); all ACs validated by manual dry-run; artefact: verification/m4-dry-run-results.md"
+        }
+      },
+      "epics": [
+        "epics/agent-loop-and-governance-layer.md",
+        "epics/verification-and-demonstrability.md"
+      ],
+      "stories": [
+        "stories/s1-three-agent-bare-loop.md",
+        "stories/s2-dev-agent-skill-trace.md",
+        "stories/s3-review-agent-trace-validation.md",
+        "stories/s4-assurance-agent-cold-start.md",
+        "stories/s5-injected-failure-detection.md",
+        "stories/s6-trace-schema-tamper-evidence.md",
+        "stories/s7-self-service-packaging.md"
+      ],
+      "decisions": "decisions.md",
+      "decisionsGate": {
+        "s4-adr-001": {
+          "status": "closed",
+          "closedAt": "2026-03-31",
+          "adr": "ADR-001",
+          "summary": "Option A structural tests + process-boundary runtime enforcement. Option C deferred to Foundry phase."
+        }
+      },
+      "slicingStrategy": "walking-skeleton",
+      "metrics": [
+        {
+          "id": "m1",
+          "name": "Autonomous loop completion on an unseen task",
+          "target": "100% — loop closes on first run against an unseen task",
+          "baseline": "0% — system does not exist yet",
+          "signal": "not-yet-measured",
+          "lastMeasured": null,
+          "evidence": null,
+          "contributingStories": ["s1-three-agent-bare-loop", "s2-dev-agent-skill-trace", "s3-review-agent-trace-validation", "s4-assurance-agent-cold-start"]
+        },
+        {
+          "id": "m2",
+          "name": "Per-decision traceability to versioned skill",
+          "target": "100% of trace entries contain skill name, version, and resolvable prompt hash",
+          "baseline": "0% — no trace entries exist",
+          "signal": "not-yet-measured",
+          "lastMeasured": null,
+          "evidence": null,
+          "contributingStories": ["s2-dev-agent-skill-trace", "s3-review-agent-trace-validation", "s4-assurance-agent-cold-start"]
+        },
+        {
+          "id": "m3",
+          "name": "Assurance agent detects injected criterion failure",
+          "target": "1/1 injected failures detected; 0 false positives on clean run",
+          "baseline": "Not measurable — system does not exist",
+          "signal": "not-yet-measured",
+          "lastMeasured": null,
+          "evidence": null,
+          "contributingStories": ["s4-assurance-agent-cold-start", "s5-injected-failure-detection"]
+        },
+        {
+          "id": "m4",
+          "name": "Time to complete audit trail — uninitiated person",
+          "target": "Under 30 minutes, no more than 2 assistance requests",
+          "baseline": "Not yet established",
+          "signal": "not-yet-measured",
+          "lastMeasured": null,
+          "evidence": null,
+          "contributingStories": ["s7-self-service-packaging"]
+        },
+        {
+          "id": "m5",
+          "name": "Trace log is self-interpreting to a non-engineer reader",
+          "target": "3/3 questions answered correctly; question 1 failure is blocking",
+          "baseline": "0/3 — no trace exists",
+          "signal": "not-yet-measured",
+          "lastMeasured": null,
+          "evidence": null,
+          "contributingStories": ["s6-trace-schema-tamper-evidence"]
+        },
+        {
+          "id": "m6",
+          "name": "Trace log integrity — tamper-evidence",
+          "target": "All trace entries append-only after assurance record written; modification is blocked or detectable",
+          "baseline": "Not yet established — no trace log exists",
+          "signal": "not-yet-measured",
+          "lastMeasured": null,
+          "evidence": null,
+          "contributingStories": ["s2-dev-agent-skill-trace", "s6-trace-schema-tamper-evidence"]
+        },
+        {
+          "id": "mm1",
+          "name": "Concept conviction — outside stakeholder",
+          "target": "At least one outside reviewer asks a next-phase question (not a concept-validity question)",
+          "baseline": "No outside reviews have occurred",
+          "signal": "not-yet-measured",
+          "lastMeasured": null,
+          "evidence": null,
+          "contributingStories": ["s7-self-service-packaging"]
+        }
+      ]
+    }
+  ]
+}

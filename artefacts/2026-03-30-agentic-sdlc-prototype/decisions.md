@@ -1,0 +1,241 @@
+# Decision Log — Agentic SDLC Prototype
+
+**Feature:** `2026-03-30-agentic-sdlc-prototype`
+**Method:** Entries recorded in chronological order. Formal ADRs follow the running log.
+
+---
+
+## Running Log
+
+| # | Date | Type | Decision summary | Decided by | Linked to |
+|---|------|------|-----------------|------------|-----------|
+| DL-005 | 2026-03-31 | ACTION | Participant required for S6 AC1 (legibility test) and S7 AC4 (dry-run). Must be named and time-committed before S1 branch is merged. Blocking on S6 and S7 execution — not on S1–S5. | Hamish | S6 W4, S7 W4 |
+| DL-004 | 2026-03-31 | RISK-ACCEPT | Review finding 1-M1 (S2 AC1 "stores in memory" describes internal state, not observable behaviour): risk accepted; addressed at test level — S2 test plan verifies the observable outcome (hash in trace matches file bytes at invocation time) rather than internal state. AC1 story text not amended. | Hamish | S2 AC1, Review run 1 |
+| DL-001 | 2026-03-30 | RISK-ACCEPT | S3 AC1 partial gap accepted — "not from session" constraint cannot be disproved by automated test; mitigated by three structural measures in S3 test plan | Hamish | S3 AC1, ADR-001 |
+| DL-002 | 2026-03-30 | DESIGN | S3 hash-before/hash-after NFR test establishes prior coverage for S6 tamper-evidence territory; S6 references S3 rather than duplicating | Hamish | S3 NFR, S6 AC3 |
+| DL-003 | 2026-03-30 | DESIGN | S4/S5 test boundary: S4 covers happy-path and unit-level hash-mismatch precondition; formal injected-failure protocol (M3) is S5's sole ownership | Hamish | S4 Out of Scope, S5 test plan |
+
+---
+
+### DL-005 — Participant required for S6 and S7 before demonstration
+
+**Date:** 2026-03-31
+**Type:** ACTION
+**Decided by:** Hamish
+**Linked to:** S6 W4 (legibility test), S7 W4 (dry-run usability test)
+
+**Context:**
+S6 AC1 requires a non-engineer participant to answer 3 questions about the trace log — this is a
+manual, observable test that cannot be simulated. S7 AC4 requires an uninitiated engineer (not the
+builder) to complete the full pipeline end-to-end from the README alone with ≤ 2 assistance requests.
+Both tests require advance scheduling. Finding a participant available on the day is a real project
+risk at MM1 if left until S6 starts.
+
+**Decision:**
+Name a participant and get a tentative time commitment before S1 branch is merged.
+The tests themselves are not needed until S6 and S7 execute. The booking is needed now.
+
+**Participant:**
+| Role | Required by | Named | Tentative date |
+|------|-------------|-------|----------------|
+| Non-engineer (S6 AC1 — legibility) | Before S6 begins | `[NAME]` | `[TENTATIVE DATE]` |
+| Uninitiated engineer (S7 AC4 — dry-run) | Before S7 begins | `[NAME]` | `[TENTATIVE DATE]` |
+
+**Blocking rule:** S6 and S7 DoR instructions blocks include a hard stop: if no named participant
+is confirmed, the agent must pause and log a PR comment — do not fabricate results, do not proceed.
+
+---
+
+### DL-001 — S3 AC1 partial gap: "not from session" constraint accepted with structural mitigation
+
+**Date:** 2026-03-30
+**Type:** RISK-ACCEPT
+**Decided by:** Hamish
+**Linked to:** S3 AC1, ADR-001
+
+**Context:**
+S3 AC1 requires the review agent to read the dev trace "from the filesystem only — not from in-memory
+or session context." No language-level mechanism prevents reading in-memory module state in an
+automated test environment. We can only test the observable behaviour: the agent reads from a file
+path argument, does not retain a cached copy across invocations, and throws when the file is absent.
+
+**Decision:**
+Accept the partial gap. The constraint is architectural, not behavioural, and is enforced by
+the process-boundary invocation pattern — the same mechanism documented in ADR-001. The automated
+test suite applies three structural mitigations: (1) missing-file-throws unit test; (2) stale-file-
+replacement integration test (file deleted + replaced before review agent reads, confirming no
+cached copy used); (3) no-cross-imports NFR assertion covering module-level state sharing.
+
+**Impact:**
+S3 test plan records the gap in the Coverage gaps table. The risk is accepted because the
+architectural enforcement (separate process invocation) provides the runtime guarantee that no
+automated test can replicate. If the process boundary is removed in a future phase, this gap must
+be re-evaluated — see ADR-001 Revisit triggers.
+
+---
+
+### DL-002 — S3 hash-before/hash-after NFR test covers S6 tamper-evidence territory
+
+**Date:** 2026-03-30
+**Type:** DESIGN
+**Decided by:** Hamish
+**Linked to:** S3 NFR "Dev trace integrity", S6 AC3
+
+**Context:**
+S3's NFR test "Dev trace integrity — trace file is unchanged after review agent run" verifies
+that the review agent does not modify the dev trace file (hash comparison before and after
+review agent invocation). S6 AC3 requires that a modified prior trace entry produces a
+detectable inconsistency at the next assurance verification run.
+
+These two tests address the same property from different angles: S3 proves the review agent
+is not the source of modification; S6 demonstrates that post-hoc external modification is
+detectable. There was a risk of duplicating the hash-comparison test in both stories.
+
+**Decision:**
+S3's NFR test is the canonical automated coverage for trace-file integrity at the
+review-agent boundary. S6's test plan references this as prior coverage and focuses on what
+S3 cannot cover: legibility for non-engineers (M5) and the manual demonstration of deliberate
+external tampering (M6). S6 does not add a second automated hash-comparison test.
+
+**Impact:**
+S3 test plan annotated with an S6 cross-reference under the "Dev trace integrity" NFR test.
+S6 test plan annotated to reference S3 as prior coverage in the AC3 gap entry.
+
+---
+
+### DL-003 — S4/S5 test boundary: injected failure protocol ownership is S5 only
+
+**Date:** 2026-03-30
+**Type:** DESIGN
+**Decided by:** Hamish
+**Linked to:** S4 Out of Scope, S5 test plan, M3
+
+**Context:**
+S4's test plan includes unit-level hash-mismatch edge cases (e.g., `buildAssuranceRecord` emits
+`escalate` verdict when given a mismatch result). S5's test plan defines the formal M3 protocol:
+a deliberate wrong hash is injected into a live trace → assurance agent must catch it → loop must
+not close. Without an explicit boundary, there was a risk of S4 and S5 owning overlapping tests
+for the same scenario, or S4 being credited with M3 coverage it does not provide.
+
+**Decision:**
+S4's mismatch unit tests are precondition tests: they confirm the function-level contract
+(`buildAssuranceRecord` populates `criteriaOutcomes` at criterion level and emits the correct
+verdict when given a mismatch input). They do not constitute a protocol-level test of the full
+failure detection chain. The formal protocol (inject → verify caught → verify loop stays open)
+is S5's ownership exclusively. If S5 cannot pass because S4's implementation does not populate
+`criteriaOutcomes`, that surfaces as an S4 implementation defect, not an S5 test failure.
+
+**Impact:**
+S4 test plan Out of Scope section updated with an explicit boundary statement. S5 test plan
+remains the sole owner of M3.
+
+---
+
+## Architecture Decision Records
+
+### ADR-001 — Agent isolation verification: structural test strategy for architectural independence constraints
+
+**Date:** 2026-03-31
+**Status:** Accepted
+**Decided by:** Hamish — product owner and sole builder
+
+> **Note on governance:** In a team context, this decision would require architecture review before
+> S4 implementation begins. In this project, Hamish holds both product owner and sole builder roles.
+> The ADR itself is the governance record that compensates for the absence of a second approver.
+> Any future contributor taking over S4 implementation must read this ADR before writing code.
+
+---
+
+**Context:**
+
+During test planning for S3 (AC1: review agent reads from filesystem only, not in-memory or session
+context) and S4 (AC5: assurance agent has no access to prior agents' execution context), a class of
+acceptance criterion emerged that cannot be fully verified by automated tests. These are
+*correct-by-architecture* constraints: the violation could only occur within the same process where
+the test runs, and the test cannot distinguish "structurally unable to violate" from "happened not
+to violate during this run."
+
+The architectural independence of the assurance agent is not incidental — it is the mechanism by
+which the governance loop produces *verifiable* rather than *correlated* validation. If the assurance
+agent shares execution context with the agents it validates, the prototype demonstrates echo, not
+assurance. Shared context means the assurance result is produced by the same runtime environment
+that produced the work it is checking — the validation chain is circular, and MM1 ("every governance
+decision traceable to versioned policy") is a claim without a structural foundation.
+
+A decision was therefore required on what the automated test suite is responsible for proving, what
+is left to structural inspection, and what is enforced at runtime through the invocation pattern.
+
+---
+
+**Options Considered**
+
+| Option | Mechanism | Pros | Cons |
+|--------|-----------|------|------|
+| A — Structural tests only | No-cross-imports assertion (Jest / `fs.readFileSync`); filesystem stale-file-replacement integration test | Automated and deterministic; catches the structural violation class (import-level shared state); no architectural changes required for this phase | Cannot catch runtime context sharing introduced via a dynamic mechanism that has no static import footprint (e.g. shared singleton accessed via dynamic `require`) |
+| B — Manual protocol only | Cold-start checklist documented in README; no automated structural assertion | Simple; maps directly to real-world deployment verification | Not repeatable without human effort; not part of CI; a structural violation introduced silently would require code review to catch; insufficient for a governance claim at the foundation of MM1 |
+| C — Dependency injection boundary | All agent context passed as explicit function parameters; no module-level singletons permitted; compliance validated at compile time by interface shape | Fully automated and exhaustive for the shared-state class; eliminates the violation class rather than testing for it; aligns with Foundry-hosted agent architecture | Requires refactoring agent module signatures before S4 implementation; introduces additional design complexity outside the scope of this phase; the architectural pattern does not yet exist in the codebase |
+
+---
+
+**Decision:**
+
+**Option A** — structural tests only — with the process-boundary invocation pattern as the runtime
+enforcement mechanism.
+
+The automated test suite covers:
+1. No-cross-imports structural assertion: `assurance-agent.ts` and its direct imports contain no
+   `import` statement referencing `dev-agent` or `review-agent` module paths.
+2. Cold-start independence integration test (stale-file-replacement pattern): the assurance agent
+   entry point is invoked twice against the same file path; the file is overwritten between
+   invocations; the second assurance record reflects the second file's content, confirming no
+   module-level caching across invocations.
+
+The runtime enforcement mechanism is the process-boundary invocation pattern: each agent is invoked
+as a separate Node.js process via the Mission Control queue handler. This is documented in the README
+and cold-start protocol. Removing the process boundary constitutes an architectural change requiring
+this ADR to be revisited (see Revisit triggers).
+
+**Option B** is rejected: a manual-only strategy is insufficient for a structural claim at the
+foundation of MM1. The governance credibility of the loop depends on the assurance agent's
+independence being architecturally enforced, not merely documented.
+
+**Option C** is noted as the correct long-term implementation path and is the specified implementation
+direction for any phase that triggers the revisit conditions below. It is deferred for this phase
+because it requires foundational module-architecture changes outside the scope of the prototype.
+
+---
+
+**Consequences:**
+
+- The automated test suite cannot catch runtime context sharing introduced via dynamic mechanisms
+  that have no static import footprint (e.g. `require(someVariable)` at runtime). This is an
+  accepted residual risk.
+- Mitigated by: (1) the no-cross-imports assertion covers the structural violation class; (2) the
+  process-boundary invocation pattern is the runtime enforcement mechanism — removing it is a
+  breaking architectural change and must trigger this ADR for review; (3) the README cold-start
+  protocol documents the assurance agent's cold-start requirement as a standing operational
+  instruction.
+- S4's verification script includes a manual cold-start scenario that confirms the live mechanism
+  is operational before S4 is marked done.
+- Any contributor introducing a new module-level singleton or shared service accessible across agent
+  boundaries must revisit this ADR and update it before merging.
+
+---
+
+**Revisit triggers:**
+
+The following conditions require this ADR to be reviewed before the relevant change is implemented.
+If any trigger is reached, **Option C** from the options above becomes the implementation path.
+
+1. **Process-boundary removal:** Any future phase that removes the process boundary and consolidates
+   agent invocation (e.g. a single Node.js process hosting all three agents as modules).
+
+2. **Foundry-hosted agent model:** Adoption of a Foundry-hosted agent model — hosted agents share
+   infrastructure by design; the isolation mechanism must be re-established at the platform level
+   rather than the process level. Option C's dependency injection boundary provides the correct
+   abstraction for this context.
+
+3. **Parallel agent invocation:** Any extension that introduces parallel agent invocation.
+   Sequential invocation is what makes the current process boundary a clean isolation mechanism;
+   parallelism breaks that assumption without necessarily breaking the structural tests, creating a
+   gap between what the tests assert and what the runtime enforces.

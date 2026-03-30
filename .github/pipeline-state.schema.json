@@ -1,0 +1,154 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline State",
+  "description": "Live state of all features/workstreams in the skills pipeline. Updated by skills on every significant transition and by /workflow reconciliation.",
+  "type": "object",
+  "required": ["version", "updated", "features"],
+  "properties": {
+    "version": { "type": "string", "description": "Schema version, currently 1" },
+    "updated": { "type": "string", "format": "date-time", "description": "ISO 8601 timestamp of last write" },  "config": {
+    "type": "object",
+    "description": "Repo-level config bridged from context.yml by skills. Consumed by the viz to set default governance mode.",
+    "properties": {
+      "regulated":           { "type": "boolean", "description": "Mirrors context.yml meta.regulated — enables strict-policy default in viz" },
+      "repoName":            { "type": "string" },
+      "strictPolicyDefault": { "type": "boolean", "description": "Explicit strict-policy default, independent of regulated flag" }
+    }
+  },    "programmes": {
+      "type": "array",
+      "description": "Programme-track initiatives. Each contains workstream slugs.",
+      "items": {
+        "type": "object",
+        "required": ["slug", "name", "status", "workstreams"],
+        "properties": {
+          "slug":        { "type": "string" },
+          "name":        { "type": "string" },
+          "status":      { "type": "string", "enum": ["active", "on-hold", "complete"] },
+          "currentPhase":{ "type": "string" },
+          "phaseGates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name":       { "type": "string" },
+                "targetDate": { "type": "string" },
+                "status":     { "type": "string", "enum": ["pending", "at-risk", "passed", "blocked"] }
+              }
+            }
+          },
+          "workstreams": {
+            "type": "array",
+            "items": { "type": "string", "description": "feature slug" }
+          },
+          "dependencies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "upstream":   { "type": "string", "description": "feature slug" },
+                "downstream": { "type": "string", "description": "feature slug" },
+                "gate":       { "type": "string", "description": "pipeline stage that unblocks downstream" },
+                "status":     { "type": "string", "enum": ["pending", "met", "at-risk", "blocking"] }
+              }
+            }
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "array",
+      "description": "All features and workstreams — both programme and standalone.",
+      "items": {
+        "type": "object",
+        "required": ["slug", "name", "track", "stage", "health"],
+        "properties": {
+          "slug":              { "type": "string" },
+          "name":              { "type": "string" },
+          "track":             { "type": "string", "enum": ["short", "standard", "programme-workstream", "library"] },
+          "programmeSlug":     { "type": "string", "description": "set if track is programme-workstream" },
+          "team":              { "type": "string" },
+          "complianceProfile": { "type": "string", "enum": ["standard", "regulated"], "description": "Triggers regulated-feature policy in viz and compliance bundle in /release" },
+          "regulated":         { "type": "boolean", "description": "Fallback regulated flag — prefer complianceProfile" },
+          "coverageMapPath":   { "type": "string", "description": "Relative path to the coverage-map.html produced by /coverage-map" },
+          "coverageRisk":      { "type": "string", "enum": ["green", "amber", "red"], "description": "Overall coverage risk rating from /coverage-map or /trace" },
+          "stage": {
+            "type": "string",
+            "description": "Current pipeline stage",
+            "enum": [
+              "loop-design", "token-optimization", "org-mapping", "scale-pipeline",
+              "ideation", "discovery", "benefit-metric", "definition", "review",
+              "test-plan", "definition-of-ready",
+              "branch-setup", "implementation-plan", "subagent-execution",
+              "implementation-review", "verify-completion", "branch-complete",
+              "definition-of-done", "trace", "release-pending", "released",
+              "spike", "stalled"
+            ]
+          },
+          "health":   { "type": "string", "enum": ["green", "amber", "red"] },
+          "updatedAt":{ "type": "string", "format": "date-time" },
+          "blocker":  { "type": "string", "description": "Human-readable blocker description if health is red" },
+          "traceStatus": { "type": "string", "enum": ["not-run", "passed", "has-findings"], "description": "Traceability check result written by /trace skill" },
+          "epics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["slug", "name", "status"],
+              "properties": {
+                "slug":   { "type": "string" },
+                "name":   { "type": "string" },
+                "status": { "type": "string", "enum": ["not-started", "in-progress", "complete"] },
+                "stories": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["slug", "name", "stage", "health"],
+                    "properties": {
+                      "slug":         { "type": "string" },
+                      "name":         { "type": "string" },
+                      "stage":        { "type": "string" },
+                      "health":       { "type": "string", "enum": ["green", "amber", "red"] },
+                      "reviewStatus": { "type": "string", "enum": ["not-started", "passed", "has-findings"] },
+                      "highFindings": { "type": "integer" },
+                      "testPlan": {
+                        "type": "object",
+                        "properties": {
+                          "status":     { "type": "string", "enum": ["not-started", "written", "all-passing"] },
+                          "totalTests": { "type": "integer" },
+                          "passing":    { "type": "integer" }
+                        }
+                      },
+                      "dorStatus":   { "type": "string", "enum": ["not-started", "blocked", "signed-off"] },
+                      "verifyStatus": { "type": "string", "enum": ["not-started", "running", "passed"], "description": "Verify-completion evidence written by /verify-completion skill" },
+                      "prStatus":    { "type": "string", "enum": ["none", "draft", "open", "merged"] },
+                      "prUrl":       { "type": "string" },
+                      "dodStatus":   { "type": "string", "enum": ["not-started", "complete"] },
+                      "acVerified":            { "type": "integer", "description": "Number of ACs verified" },
+                      "acTotal":               { "type": "integer" },
+                      "releaseReady":           { "type": "boolean", "description": "Set true by /definition-of-done when all ACs are covered" },
+                      "layoutGapsAtMerge":      { "type": "boolean", "description": "True if CSS-layout test gaps existed at merge time (written by /definition-of-done)" },
+                      "layoutGapsRiskAccepted": { "type": "boolean", "description": "True if the layout gap risk was explicitly accepted at merge (written by /definition-of-done)" },
+                      "tasks": {
+                        "type": "array",
+                        "description": "Implementation plan tasks for this story, written by /implementation-plan and updated by /tdd",
+                        "items": {
+                          "type": "object",
+                          "required": ["id", "name", "tddState"],
+                          "properties": {
+                            "id":       { "type": "string" },
+                            "name":     { "type": "string" },
+                            "tddState": { "type": "string", "enum": ["not-started", "committed", "green", "refactor", "done"], "description": "TDD phase: not-started → committed (red test written) → green (passing) → refactor → done" },
+                            "file":     { "type": "string", "description": "Relative path to the implementation plan task file" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

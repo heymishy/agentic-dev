@@ -1,0 +1,3598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pipeline Visualiser</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"></script>
+<style>
+  /* ── Reset + base ───────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0f172a;
+    --surface:   #1e293b;
+    --surface2:  #273548;
+    --border:    #334155;
+    --text:      #e2e8f0;
+    --muted:     #94a3b8;
+    --green:     #22c55e;
+    --amber:     #f59e0b;
+    --red:       #ef4444;
+    --blue:      #3b82f6;
+    --purple:    #a855f7;
+    --teal:      #14b8a6;
+    --col-w:     220px;
+    --gap:       12px;
+  }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 13px; min-height: 100vh; }
+
+  /* ── Top bar ────────────────────────────────────────────────── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 8px 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 14px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; }
+  header .sep { color: var(--border); }
+  .filter-group { display: flex; align-items: center; gap: 6px; }
+  .filter-group label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+  select, input[type="text"] {
+    background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 4px; padding: 3px 7px; font-size: 12px; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--blue); }
+  .btn {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 4px; padding: 3px 10px; font-size: 12px; cursor: pointer;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--border); }
+  .btn.active { background: var(--blue); border-color: var(--blue); }
+  .spacer { flex: 1; }
+  #last-updated { color: var(--muted); font-size: 11px; white-space: nowrap; }
+  #reload-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 3px 8px; font-size: 11px; cursor: pointer; }
+  #reload-btn:hover { color: var(--text); border-color: var(--text); }
+  .range-wrap { display: flex; align-items: center; gap: 6px; }
+  input[type="range"] { width: 120px; accent-color: var(--blue); }
+  .range-val { color: var(--muted); font-size: 11px; min-width: 44px; text-align: right; }
+
+  /* ── Legend ─────────────────────────────────────────────────── */
+  .legend { display: flex; gap: 12px; align-items: center; }
+  .legend-item { display: flex; gap: 4px; align-items: center; font-size: 11px; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .dot.green { background: var(--green); }
+  .dot.amber { background: var(--amber); }
+  .dot.red   { background: var(--red); }
+
+  /* ── Stage columns ───────────────────────────────────────────── */
+  #board {
+    display: flex; gap: var(--gap); padding: var(--gap) 16px;
+    overflow-x: auto; align-items: flex-start; min-height: calc(100vh - 60px);
+  }
+  #board.loop-grouped {
+    display: block; padding: 10px 16px; overflow-x: visible;
+    min-height: calc(100vh - 120px);
+  }
+  .loop-lane {
+    border: 1px solid var(--border); border-radius: 8px;
+    background: rgba(15,23,42,.45); margin-bottom: 10px;
+  }
+  .loop-lane-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .loop-lane-title { font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+  .loop-lane-title.outer { color: #93c5fd; }
+  .loop-lane-title.inner { color: #5eead4; }
+  .loop-lane-purpose { font-size: 10px; color: var(--muted); font-style: italic; }
+  .loop-lane-meta { color: var(--muted); font-size: 10px; }
+  .loop-lane-row { display: flex; gap: var(--gap); overflow-x: auto; padding: 10px; align-items: flex-start; }
+  .loop-gate-banner {
+    margin: 0 0 8px 0; padding: 8px 14px; border-radius: 6px;
+    background: rgba(20,184,166,.12); border: 1px solid rgba(20,184,166,.35);
+    font-size: 11px; color: var(--teal);
+  }
+  .loop-gate-banner code { font-family: monospace; opacity: .85; }
+  .col {
+    flex-shrink: 0; width: var(--col-w);
+    background: var(--surface); border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .col-header {
+    padding: 8px 10px; border-bottom: 1px solid var(--border);
+    font-weight: 600; font-size: 11px; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .col-header-main { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .col-header-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .col-tools { display: flex; align-items: center; gap: 4px; }
+  .col-count {
+    background: var(--surface2); border-radius: 10px;
+    padding: 1px 6px; font-size: 10px; color: var(--muted);
+  }
+  .col-size-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 3px; width: 18px; height: 18px; font-size: 11px;
+    line-height: 1; cursor: pointer; padding: 0;
+  }
+  .col-size-btn:hover { color: var(--text); border-color: var(--text); }
+  .col-empty .col-header-title { opacity: 0.8; }
+  .col-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 60px; }
+
+  /* active column accent — draws the eye to current work */
+  .col-active    { border-top: 2px solid var(--blue); }
+  .col-active.has-red   { border-top-color: var(--red); }
+  .col-active.has-amber { border-top-color: var(--amber); }
+  .col-active .col-header { color: var(--text); }
+
+  /* completed-stage count badge */
+  .col-count-done { font-size: 10px; color: var(--green); opacity: 0.65; padding: 1px 4px; }
+
+  /* expand/collapse toggle for the done-trail section */
+  .done-section-toggle {
+    width: 100%; background: none; border: 1px dashed var(--border); color: var(--muted);
+    border-radius: 4px; padding: 3px 6px; font-size: 10px; cursor: pointer; text-align: left;
+    margin-top: 2px; font-family: inherit;
+  }
+  .done-section-toggle:hover { color: var(--text); border-color: var(--muted); }
+  .done-cards { display: none; flex-direction: column; gap: 4px; margin-top: 3px; }
+  .done-cards.open { display: flex; }
+
+  /* ghost card for completed stages */
+  .feature-card.done-card {
+    opacity: 0.42; border-left: 2px solid rgba(34,197,94,0.5) !important;
+  }
+  .feature-card.done-card:hover { opacity: 0.72; }
+
+  /* ── Feature cards ────────────────────────────────────────────── */
+  .feature-card {
+    background: var(--surface2); border-radius: 6px;
+    border: 1px solid var(--border); overflow: hidden;
+    transition: border-color .15s;
+  }
+  .feature-card:hover { border-color: var(--blue); }
+  .feature-card.health-red    { border-left: 3px solid var(--red); }
+  .feature-card.health-amber  { border-left: 3px solid var(--amber); }
+  .feature-card.health-green  { border-left: 3px solid var(--green); }
+
+  .card-header {
+    padding: 8px 10px; cursor: pointer;
+    display: flex; align-items: flex-start; gap: 6px;
+  }
+  .card-toggle { color: var(--muted); font-size: 10px; flex-shrink: 0; margin-top: 2px; transition: transform .15s; }
+  .card-toggle.open { transform: rotate(90deg); }
+  .card-title { font-weight: 600; font-size: 12px; line-height: 1.3; flex: 1; }
+  .card-track {
+    font-size: 10px; border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
+    background: var(--bg); color: var(--muted);
+  }
+  .card-track.short    { color: var(--teal); }
+  .card-track.standard { color: var(--blue); }
+  .card-track.programme-workstream { color: var(--purple); }
+
+  .card-state-chip {
+    font-size: 9px; border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
+    border: 1px solid transparent; text-transform: uppercase; letter-spacing: .04em;
+  }
+  .card-state-chip.human {
+    color: #93c5fd; background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.35);
+  }
+  .card-state-chip.processing {
+    color: #5eead4; background: rgba(20,184,166,.12); border-color: rgba(20,184,166,.35);
+  }
+  .card-state-chip.blocked {
+    color: #fca5a5; background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.35);
+  }
+  .card-state-chip.done {
+    color: #86efac; background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.35);
+  }
+
+  .card-body { border-top: 1px solid var(--border); padding: 8px 10px; display: none; }
+  .card-body.open { display: block; }
+
+  /* meta row */
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tag { font-size: 10px; background: var(--bg); border-radius: 3px; padding: 1px 6px; color: var(--muted); }
+  .tag.red   { color: var(--red); }
+  .tag.amber { color: var(--amber); }
+  .tag.green { color: var(--green); }
+
+  /* Blocker notice */
+  .blocker-notice {
+    background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3);
+    border-radius: 4px; padding: 5px 8px; font-size: 11px; color: var(--red);
+    margin-bottom: 8px;
+  }
+  .next-action {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+    padding: 5px 7px; font-size: 11px; margin-bottom: 8px;
+  }
+  .next-action .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; margin-right: 6px; }
+  .next-action.human { border-color: rgba(59,130,246,.35); }
+  .next-action.processing { border-color: rgba(20,184,166,.35); }
+  .next-action.blocked { border-color: rgba(239,68,68,.35); }
+  .next-action.done { border-color: rgba(34,197,94,.35); }
+  .next-action-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .next-action-controls { display: inline-flex; align-items: center; gap: 6px; }
+  .next-action-age { color: var(--muted); font-size: 10px; }
+
+  /* ── Stage artefacts row (active card) ───────────────────────── */
+  .card-artefacts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px 0 2px; border-top: 1px solid var(--border); margin-top: 6px; }
+  .card-artefacts .label { font-size: 10px; color: var(--muted); margin-right: 2px; flex-shrink: 0; }
+  .card-artefacts a.drawer-link { font-size: 11px; white-space: nowrap; }
+
+  /* ── Epic tree ────────────────────────────────────────────────── */
+  .epic-list { display: flex; flex-direction: column; gap: 4px; }
+  .epic-row {
+    background: var(--bg); border-radius: 4px; border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .epic-row-header {
+    padding: 5px 8px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  }
+  .epic-toggle { color: var(--muted); font-size: 9px; flex-shrink: 0; transition: transform .15s; }
+  .epic-toggle.open { transform: rotate(90deg); }
+  .epic-name { font-size: 11px; font-weight: 600; flex: 1; }
+  .epic-status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .status-not-started { background: var(--border); }
+  .status-in-progress { background: var(--amber); }
+  .status-complete    { background: var(--green); }
+
+  .story-list { padding: 4px 8px 6px 20px; display: none; flex-direction: column; gap: 3px; }
+  .story-list.open { display: flex; }
+  .story-row {
+    background: var(--surface2); border-radius: 4px; border: 1px solid var(--border);
+    padding: 5px 8px; cursor: pointer; transition: border-color .15s;
+  }
+  .story-row:hover { border-color: var(--blue); }
+  .story-row-top { display: flex; align-items: center; gap: 6px; }
+  .story-health { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .story-name { font-size: 11px; flex: 1; }
+  .story-stage-badge {
+    font-size: 9px; background: var(--bg); border-radius: 3px; padding: 1px 5px; color: var(--muted);
+  }
+  .story-details { margin-top: 5px; display: none; }
+  .story-details.open { display: block; }
+  .story-progress { margin-top: 4px; }
+
+  /* ── TDD task list ───────────────────────────────────────────── */
+  .story-row { cursor: default; }
+  .story-row-top { cursor: pointer; }
+  .task-mini-bar { margin-top: 4px; }
+  .task-toggle-btn {
+    display: flex; align-items: center; gap: 4px; margin-top: 4px;
+    background: none; border: none; color: var(--muted); font-size: 10px;
+    cursor: pointer; padding: 0; font-family: inherit;
+  }
+  .task-toggle-btn:hover { color: var(--text); }
+  .task-toggle-arrow { font-size: 9px; transition: transform .15s; }
+  .task-toggle-arrow.open { transform: rotate(90deg); }
+  .task-list-inline { display: none; flex-direction: column; gap: 2px; margin-top: 4px; }
+  .task-list-inline.open { display: flex; }
+  .task-item {
+    display: flex; align-items: center; gap: 5px; padding: 3px 4px;
+    background: var(--bg); border-radius: 3px; border: 1px solid var(--border);
+  }
+  .task-name { font-size: 10px; color: var(--text); flex: 1; line-height: 1.3; }
+  a.task-link { color: var(--blue); text-decoration: none; }
+  a.task-link:hover { text-decoration: underline; }
+  .tdd-badge {
+    font-size: 9px; font-weight: 700; border-radius: 3px; padding: 1px 5px;
+    flex-shrink: 0; letter-spacing: .04em;
+  }
+  .tdd-not-started { background: var(--bg);    color: var(--border);  border: 1px solid var(--border); }
+  .tdd-red         { background: rgba(239,68,68,.15);  color: var(--red);   border: 1px solid rgba(239,68,68,.4); }
+  .tdd-green       { background: rgba(34,197,94,.15);  color: var(--green); border: 1px solid rgba(34,197,94,.4); }
+  .tdd-refactor    { background: rgba(245,158,11,.15); color: var(--amber); border: 1px solid rgba(245,158,11,.4); }
+  .tdd-committed   { background: rgba(20,184,166,.15); color: var(--teal);  border: 1px solid rgba(20,184,166,.4); }
+  /* Drawer task list */
+  .drawer-task-item {
+    display: flex; align-items: flex-start; gap: 8px; padding: 5px 6px;
+    background: var(--bg); border-radius: 4px; border: 1px solid var(--border);
+    margin-bottom: 3px;
+  }
+  .drawer-task-num { font-size: 10px; color: var(--muted); flex-shrink: 0; min-width: 14px; }
+  .drawer-task-name { font-size: 12px; flex: 1; line-height: 1.4; }
+  .drawer-tdd-badge { font-size: 10px; font-weight: 700; border-radius: 3px; padding: 2px 6px; flex-shrink: 0; }
+  .progress-label { font-size: 10px; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 2px; }
+  .progress-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--green); border-radius: 2px; transition: width .3s; }
+  .progress-fill.partial { background: var(--amber); }
+  .story-pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+  .pill {
+    font-size: 9px; border-radius: 3px; padding: 1px 6px;
+    border: 1px solid transparent;
+  }
+  .pill.ok   { background: rgba(34,197,94,.12); color: var(--green); border-color: rgba(34,197,94,.3); }
+  .pill.warn { background: rgba(245,158,11,.12); color: var(--amber); border-color: rgba(245,158,11,.3); }
+  .pill.fail { background: rgba(239,68,68,.12);  color: var(--red);   border-color: rgba(239,68,68,.3); }
+  .pill.none { background: var(--bg); color: var(--muted); border-color: var(--border); }
+
+  /* ── Empty state ─────────────────────────────────────────────── */
+  .empty-state {
+    text-align: center; padding: 40px 16px; color: var(--muted);
+  }
+  .empty-state h2 { font-size: 15px; margin-bottom: 8px; color: var(--text); }
+  .empty-state p  { font-size: 12px; line-height: 1.6; }
+  .empty-state code { background: var(--surface); padding: 1px 5px; border-radius: 3px; font-size: 11px; }
+
+  /* ── Summary bar ─────────────────────────────────────────────── */
+  #summary-bar {
+    display: flex; gap: 16px; padding: 6px 16px;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    font-size: 11px; color: var(--muted); flex-wrap: wrap;
+  }
+  .summary-stat { display: flex; gap: 5px; align-items: center; }
+  .summary-stat .val { color: var(--text); font-weight: 600; }
+
+  /* ── Action queue panel ─────────────────────────────────────── */
+  #action-queue {
+    display: none; padding: 8px 16px; border-bottom: 1px solid var(--border);
+    background: rgba(15,23,42,.35);
+  }
+  #action-queue.active { display: block; }
+  .aq-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 6px; font-size: 11px;
+  }
+  .aq-title { color: #93c5fd; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .aq-meta { color: var(--muted); }
+  .aq-list { display: flex; flex-wrap: wrap; gap: 6px; }
+  .aq-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--surface2); padding: 3px 8px; font-size: 11px;
+    max-width: 100%;
+  }
+  .aq-item button {
+    background: none; border: none; color: var(--text); cursor: pointer;
+    font: inherit; padding: 0; text-decoration: underline; text-underline-offset: 2px;
+  }
+  .aq-item .aq-state.human { color: #93c5fd; }
+  .aq-item .aq-state.blocked { color: #fca5a5; }
+  .aq-item .aq-age { color: var(--muted); font-size: 10px; }
+  .aq-empty { color: var(--muted); font-size: 11px; }
+
+  /* ── Loop structure strip (pipeline view only) ───────────────── */
+  #loop-structure {
+    display: none; gap: 10px; align-items: center;
+    padding: 6px 16px; border-bottom: 1px solid var(--border);
+    background: rgba(15,23,42,.45); overflow-x: auto;
+  }
+  #loop-structure.active { display: flex; }
+  .loop-band {
+    display: inline-flex; align-items: center; gap: 8px;
+    border-radius: 999px; border: 1px solid var(--border);
+    padding: 4px 10px; white-space: nowrap; font-size: 11px;
+  }
+  .loop-band strong { font-size: 11px; }
+  .loop-band .loop-stage-list { font-size: 10px; color: var(--muted); }
+  .loop-band.outer {
+    background: rgba(59,130,246,.08);
+    border-color: rgba(59,130,246,.3);
+    color: #93c5fd;
+  }
+  .loop-band.inner {
+    background: rgba(20,184,166,.1);
+    border-color: rgba(20,184,166,.35);
+    color: #5eead4;
+  }
+  .col-loop-outer { box-shadow: inset 0 2px 0 rgba(59,130,246,.5); }
+  .col-loop-inner { box-shadow: inset 0 2px 0 rgba(20,184,166,.65); }
+  .tag.loop-outer { color: #93c5fd; border: 1px solid rgba(59,130,246,.3); }
+  .tag.loop-inner { color: #5eead4; border: 1px solid rgba(20,184,166,.35); }
+  .tag.loop-library { color: #d8b4fe; border: 1px solid rgba(168,85,247,.35); }
+
+  /* ── Story drawer (slide-in from right) ─────────────────────── */
+  #drawer-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200;
+  }
+  #drawer-overlay.open { display: block; }
+  #drawer {
+    position: fixed; right: 0; top: 0; bottom: 0; width: 360px;
+    background: var(--surface); border-left: 1px solid var(--border);
+    z-index: 201; overflow-y: auto; padding: 16px;
+    transform: translateX(100%); transition: transform .2s;
+  }
+  #drawer.open { transform: translateX(0); }
+  #drawer-close { float: right; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 8px; cursor: pointer; font-size: 12px; }
+  #drawer-close:hover { color: var(--text); }
+  #drawer h2 { font-size: 14px; font-weight: 700; margin-bottom: 2px; margin-right: 40px; }
+  #drawer .drawer-stage { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+  .drawer-section { margin-bottom: 14px; }
+  .drawer-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: 6px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
+  .drawer-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 12px; }
+  .drawer-row .label { color: var(--muted); }
+  .drawer-link { color: var(--blue); text-decoration: none; font-size: 11px; }
+  .drawer-link:hover { text-decoration: underline; }
+  .drawer-blocker { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: 4px; padding: 6px 8px; font-size: 11px; color: var(--red); }
+
+  /* ── Keyboard hint ────────────────────────────────────────────── */
+  #kbd-hint { position: fixed; bottom: 12px; right: 16px; font-size: 10px; color: var(--border); }
+
+  /* ── Drop zone (shown when fetch fails) ─────────────────────── */
+  #drop-zone {
+    border: 2px dashed var(--border); border-radius: 10px;
+    padding: 48px 24px; text-align: center; cursor: pointer;
+    transition: border-color .2s, background .2s;
+    margin: 24px auto; max-width: 480px;
+  }
+  #drop-zone:hover, #drop-zone.drag-over {
+    border-color: var(--blue); background: rgba(59,130,246,.06);
+  }
+  #drop-zone h2 { font-size: 16px; margin-bottom: 8px; }
+  #drop-zone p  { font-size: 12px; color: var(--muted); line-height: 1.7; }
+  #drop-zone .drop-icon { font-size: 36px; margin-bottom: 12px; }
+  #file-input { display: none; }
+  #browse-btn {
+    margin-top: 14px; display: inline-block;
+    background: var(--blue); color: #fff; border: none;
+    border-radius: 5px; padding: 6px 18px; font-size: 13px;
+    cursor: pointer; font-family: inherit;
+  }
+  #browse-btn:hover { background: #2563eb; }
+
+  /* ── Markdown viewer ─────────────────────────────────────────── */
+  #md-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 300;
+  }
+  #md-overlay.open { display: block; }
+  #md-pane {
+    display: none; position: fixed; left: 50%; top: 5vh; transform: translateX(-50%);
+    width: min(860px, 92vw); max-height: 90vh;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    z-index: 301; flex-direction: column; overflow: hidden;
+  }
+  #md-pane.open { display: flex; }
+  #md-toolbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  #md-title { flex: 1; font-size: 11px; color: var(--muted); font-family: monospace; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  #md-close { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
+  #md-close:hover { color: var(--text); }
+  .md-tab-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 11px; }
+  .md-tab-btn:hover { color: var(--text); }
+  .md-tab-btn.active { color: var(--blue); border-color: rgba(59,130,246,.45); background: rgba(59,130,246,.08); }
+  #md-save-draft { background: none; border: 1px solid rgba(34,197,94,.4); color: var(--green); border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 11px; }
+  #md-save-draft:hover { background: rgba(34,197,94,.1); }
+  #md-reset-draft { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 11px; }
+  #md-reset-draft:hover { color: var(--text); }
+  #md-status { font-size: 10px; color: var(--muted); margin-right: 6px; }
+  #md-content { display: none; }
+  #md-content.active { display: block; }
+  #md-editor { display: none; width: 100%; min-height: 58vh; resize: vertical; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: monospace; font-size: 12px; line-height: 1.55; box-sizing: border-box; border-top-left-radius: 0; border-top-right-radius: 0; }
+  #md-editor.active { display: block; }
+  #md-format-bar { display: none; gap: 2px; padding: 5px 8px; background: var(--surface); border: 1px solid var(--border); border-bottom: none; border-radius: 6px 6px 0 0; flex-wrap: wrap; }
+  #md-format-bar.active { display: flex; }
+  .fmt-btn { background: none; border: 1px solid transparent; color: var(--muted); border-radius: 4px; padding: 2px 7px; cursor: pointer; font-size: 11px; line-height: 1.6; }
+  .fmt-btn:hover { background: rgba(255,255,255,.07); color: var(--text); border-color: var(--border); }
+  .fmt-sep { width: 1px; background: var(--border); margin: 2px 4px; }
+  #md-body { overflow-y: auto; padding: 24px 32px; flex: 1; line-height: 1.6; }
+  .md-content { max-width: 720px; }
+  .md-content h1 { font-size: 20px; font-weight: 700; margin: 0 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .md-content h2 { font-size: 15px; font-weight: 700; margin: 24px 0 10px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+  .md-content h3 { font-size: 13px; font-weight: 600; margin: 16px 0 6px; }
+  .md-content h4, .md-content h5 { font-size: 12px; font-weight: 600; margin: 12px 0 5px; color: var(--muted); }
+  .md-content p { margin-bottom: 10px; }
+  .md-content ul, .md-content ol { padding-left: 22px; margin-bottom: 10px; }
+  .md-content li { margin-bottom: 2px; }
+  .md-content li > ul, .md-content li > ol { margin-top: 3px; margin-bottom: 3px; }
+  .md-content code { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 4px; font-family: monospace; font-size: 11px; }
+  .md-content pre { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; overflow-x: auto; margin-bottom: 12px; }
+  .md-content pre code { background: none; border: none; padding: 0; font-size: 12px; line-height: 1.5; }
+  .md-content blockquote { border-left: 3px solid var(--border); padding: 4px 12px; color: var(--muted); margin: 0 0 10px; }
+  .md-content table { border-collapse: collapse; margin-bottom: 12px; font-size: 12px; min-width: 100%; }
+  .md-content th { background: var(--surface2); padding: 6px 10px; text-align: left; border: 1px solid var(--border); font-weight: 600; }
+  .md-content td { padding: 5px 10px; border: 1px solid var(--border); }
+  .md-content tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  .md-content hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
+  .md-content a { color: var(--blue); text-decoration: none; }
+  .md-content a:hover { text-decoration: underline; }
+  .md-content strong { font-weight: 700; }
+  .md-content em { font-style: italic; }
+
+  /* ── MD VALIDATION PANEL ─────────────────────────────────────── */
+  #md-validation { display: none; padding: 4px 16px 6px; border-bottom: 1px solid var(--border); }
+  #md-validation.has-findings { display: block; }
+  .md-val-item { font-size: 11px; padding: 2px 0; display: flex; align-items: flex-start; gap: 5px; }
+  .md-val-error { color: var(--red); }
+  .md-val-warn  { color: var(--amber); }
+  .md-val-ok    { color: var(--green); }
+  .md-val-info  { color: var(--muted); }
+
+  /* ── MD FORM EDITOR ───────────────────────────────────────────── */
+  #md-form { display: none; }
+  #md-form.active { display: block; }
+  .ac-card { border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; background: var(--surface); }
+  .ac-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .ac-id { font-size: 11px; font-weight: 700; color: var(--blue); font-family: monospace; }
+  .ac-delete { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 0 4px; line-height: 1; }
+  .ac-delete:hover { color: var(--red); }
+  .ac-field { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 5px; }
+  .ac-field-label { font-size: 10px; font-weight: 600; color: var(--muted); width: 38px; padding-top: 5px; flex-shrink: 0; text-transform: uppercase; letter-spacing: .05em; }
+  .ac-input { flex: 1; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 4px 8px; font-size: 12px; font-family: inherit; line-height: 1.4; resize: vertical; min-height: 28px; box-sizing: border-box; }
+  .ac-input:focus { outline: none; border-color: rgba(59,130,246,.5); }
+  .ac-freetext { min-height: 48px; }
+  #md-form-add-ac { background: none; border: 1px dashed var(--border); color: var(--muted); border-radius: 4px; padding: 6px 12px; cursor: pointer; font-size: 11px; width: 100%; margin-top: 4px; }
+  #md-form-add-ac:hover { border-color: var(--blue); color: var(--blue); }
+  .form-unsupported { color: var(--muted); font-size: 12px; font-style: italic; padding: 24px 0; text-align: center; }
+
+  /* ── MD DIFF VIEW ────────────────────────────────────────────── */
+  #md-diff { display: none; font-family: monospace; font-size: 12px; line-height: 1.5; }
+  #md-diff.active { display: block; }
+  .diff-hdr  { font-size: 11px; color: var(--muted); padding: 0 0 10px; }
+  .diff-line { display: flex; gap: 6px; padding: 0 4px; white-space: pre-wrap; word-break: break-all; min-height: 18px; }
+  .diff-add  { background: rgba(34,197,94,.10); }
+  .diff-del  { background: rgba(239,68,68,.10); }
+  .diff-sign { width: 14px; flex-shrink: 0; user-select: none; font-weight: 700; }
+  .diff-add .diff-sign { color: var(--green); }
+  .diff-del .diff-sign { color: var(--red); }
+  .diff-eq  .diff-sign { color: transparent; }
+  .diff-linenum { width: 32px; flex-shrink: 0; text-align: right; color: var(--muted); user-select: none; font-size: 11px; padding-top: 1px; }
+  .diff-skip { color: var(--muted); font-style: italic; padding: 3px 8px; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); margin: 2px 0; font-size: 11px; }
+  #md-copy-patch { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 11px; }
+  #md-copy-patch:hover { color: var(--text); }
+
+  /* ── MD CONFLICT BANNER ──────────────────────────────────────── */
+  #md-conflict { display: none; padding: 6px 16px; background: rgba(239,68,68,.08); border-bottom: 1px solid rgba(239,68,68,.3); font-size: 11px; color: var(--red); gap: 6px; align-items: center; flex-wrap: wrap; }
+  #md-conflict.visible { display: flex; }
+  #md-conflict span { flex: 1; }
+  #md-conflict button { background: none; border: 1px solid rgba(239,68,68,.4); color: var(--red); border-radius: 4px; padding: 1px 8px; cursor: pointer; font-size: 11px; }
+  #md-conflict button:hover { background: rgba(239,68,68,.1); }
+
+  /* ── MD OPEN-IN-VSCODE / COPILOT BUTTONS ────────────────────── */
+  #md-open-vscode { background: none; border: 1px solid rgba(0,122,204,.4); color: #4da6ff; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 11px; }
+  #md-open-vscode:hover { background: rgba(0,122,204,.1); }
+  #md-suggest-copilot { background: none; border: 1px solid rgba(139,92,246,.4); color: #c084fc; border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 11px; }
+  #md-suggest-copilot:hover { background: rgba(139,92,246,.1); }
+  #md-drafts-btn { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 11px; position: relative; }
+  #md-drafts-btn:hover { color: var(--text); }
+  .draft-badge { position: absolute; top: -5px; right: -5px; background: var(--amber); color: #000; border-radius: 999px; font-size: 9px; font-weight: 700; min-width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+
+  /* ── DRAFT LIST PANEL ─────────────────────────────────────────────── */
+  #draft-list-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 400; }
+  #draft-list-overlay.open { display: block; }
+  #draft-list-panel {
+    display: none; position: fixed; left: 50%; top: 10vh; transform: translateX(-50%);
+    width: min(600px, 90vw); max-height: 75vh; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; z-index: 401;
+    flex-direction: column; overflow: hidden;
+  }
+  #draft-list-panel.open { display: flex; }
+  #draft-list-header { display: flex; align-items: center; gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  #draft-list-header h3 { flex: 1; font-size: 13px; font-weight: 600; margin: 0; }
+  #draft-list-close { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 2px 10px; cursor: pointer; font-size: 12px; }
+  #draft-list-close:hover { color: var(--text); }
+  #draft-list-body { overflow-y: auto; padding: 12px 16px; flex: 1; }
+  .draft-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .draft-item:last-child { border-bottom: none; }
+  .draft-item-info { flex: 1; min-width: 0; }
+  .draft-item-path { font-family: monospace; font-size: 11px; color: var(--blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+  .draft-item-path:hover { text-decoration: underline; }
+  .draft-item-type { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .draft-item-actions { display: flex; gap: 5px; flex-shrink: 0; }
+  .draft-item-open { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 1px 8px; cursor: pointer; font-size: 11px; }
+  .draft-item-open:hover { color: var(--blue); border-color: rgba(59,130,246,.4); }
+  .draft-item-discard { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px; padding: 1px 8px; cursor: pointer; font-size: 11px; }
+  .draft-item-discard:hover { color: var(--red); border-color: rgba(239,68,68,.4); }
+  .draft-empty { color: var(--muted); font-size: 12px; text-align: center; padding: 24px 0; font-style: italic; }
+
+  /* ── OUTCOMES VIEW ────────────────────────────────────────────── */
+  #outcomes-board { display:none; padding:12px 16px; }
+  #outcomes-board.active { display:block; }
+  #story-map-board { display:none; padding:12px 16px; }
+  #story-map-board.active { display:block; }
+  .story-map-toolbar { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px; }
+  .story-map-toolbar .label { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .story-map-strategy-select { min-width:170px; }
+  .story-map-cmp-toggle { font-size:11px; }
+  .story-map-surface { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px; }
+  .story-map-scroll { overflow-x:auto; padding-bottom:4px; }
+  .story-map-grid { display:grid; gap:10px; align-items:start; min-width:max-content; }
+  .story-map-grid.single { grid-auto-flow:column; grid-auto-columns:minmax(250px,280px); }
+  .story-map-epic { border:1px solid var(--border); border-radius:8px; background:var(--surface2); min-height:120px; }
+  .story-map-epic-head { padding:8px; border-bottom:1px solid var(--border); }
+  .story-map-epic-title { font-size:12px; font-weight:700; color:var(--text); }
+  .story-map-epic-meta { font-size:10px; color:var(--muted); margin-top:3px; }
+  .story-map-story-list { display:flex; flex-direction:column; gap:6px; padding:8px; }
+  .story-map-story { border:1px solid var(--border); border-radius:6px; background:var(--bg); padding:6px 7px; cursor:pointer; }
+  .story-map-story:hover { border-color:var(--blue); }
+  .story-map-story.stub { border-style:dashed; }
+  .story-map-story-title { font-size:11px; color:var(--text); line-height:1.35; }
+  .story-map-story-slug { font-size:10px; color:var(--muted); margin-top:3px; font-family:monospace; }
+  .story-map-personas { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+  .story-map-persona { font-size:10px; border:1px solid var(--border); border-radius:999px; padding:1px 6px; color:var(--muted); }
+  .story-map-persona:hover { color:var(--text); border-color:var(--blue); background:rgba(59,130,246,.1); }
+  .story-map-compare-wrap { display:grid; gap:12px; grid-template-columns:1fr 1fr; }
+  .story-map-compare-col { min-width:0; }
+  .story-map-compare-title { font-size:11px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.04em; }
+  #story-stub-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:320; }
+  #story-stub-overlay.open { display:block; }
+  #story-stub-modal { display:none; position:fixed; z-index:321; top:8vh; left:50%; transform:translateX(-50%); width:min(760px,90vw); max-height:84vh; overflow:auto; background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+  #story-stub-modal.open { display:block; }
+  #story-stub-head { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); }
+  #story-stub-title { flex:1; font-size:13px; font-weight:700; }
+  #story-stub-close { background:none; border:1px solid var(--border); color:var(--muted); border-radius:4px; padding:2px 10px; cursor:pointer; font-size:12px; }
+  #story-stub-close:hover { color:var(--text); }
+  #story-stub-body { padding:12px 14px; font-size:12px; line-height:1.5; }
+  .story-stub-row { margin-bottom:8px; }
+  .story-stub-label { color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+  #library-board {
+    display: none; gap: var(--gap); padding: var(--gap) 16px;
+    overflow-x: auto; align-items: flex-start; min-height: calc(100vh - 120px);
+  }
+  #library-board.active { display: flex; }
+  #governance-board { display:none; padding:12px 16px; }
+  #governance-board.active { display:block; }
+  .gov-summary {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .gov-controls {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .gov-pill {
+    border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px;
+    font-size: 11px; background: var(--surface);
+  }
+  .gov-pill.pass { color: var(--green); border-color: rgba(34,197,94,.35); }
+  .gov-pill.warn { color: var(--amber); border-color: rgba(245,158,11,.35); }
+  .gov-pill.fail { color: var(--red); border-color: rgba(239,68,68,.35); }
+  .gov-pill.filter-active { background: rgba(239,68,68,.12); border-color: rgba(239,68,68,.45); }
+  .gov-btn {
+    border: 1px solid var(--border); border-radius: 6px; padding: 4px 9px;
+    background: var(--surface2); color: var(--text); font-size: 11px; cursor: pointer;
+  }
+  .gov-btn:hover { border-color: var(--text); }
+  .gov-btn.active { border-color: rgba(245,158,11,.5); color: var(--amber); }
+  .gov-note { color: var(--muted); font-size: 10px; }
+  .gov-ref {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 12px; margin-bottom: 10px;
+  }
+  .gov-ref h3 { font-size: 12px; margin-bottom: 8px; color: var(--text); }
+  .gov-ref-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px,1fr)); gap: 8px; }
+  .gov-ref-item { border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: var(--surface2); }
+  .gov-ref-item .name { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+  .gov-ref-item .skill { font-size: 10px; color: #93c5fd; margin-bottom: 4px; }
+  .gov-ref-item .criteria { font-size: 10px; color: var(--muted); line-height: 1.4; }
+  .gov-ref-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .gov-ref-header h3 { margin-bottom: 0; }
+  .gov-ref-item-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .skill-source-badge {
+    font-size: 9px; border-radius: 999px; padding: 1px 6px;
+    border: 1px solid var(--border); white-space: nowrap;
+  }
+  .skill-source-badge.live    { color: var(--green);  border-color: rgba(34,197,94,.35);  background: rgba(34,197,94,.08); }
+  .skill-source-badge.partial { color: var(--amber);  border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
+  .skill-source-badge.default { color: var(--muted);  border-color: var(--border); }
+  .gov-meta-ref { margin-top: 10px; font-size: 10px; color: var(--muted); }
+  .gov-meta-ref summary { cursor: pointer; font-size: 10px; color: var(--muted); user-select: none; }
+  .gov-meta-ref summary:hover { color: var(--text); }
+  .gov-matrix-wrap {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    overflow-x: auto;
+  }
+  .gov-matrix { width: 100%; border-collapse: collapse; font-size: 11px; min-width: 950px; }
+  .gov-matrix th, .gov-matrix td { border-bottom: 1px solid var(--border); padding: 7px 8px; text-align: left; vertical-align: middle; }
+  .gov-matrix th { color: var(--muted); text-transform: uppercase; font-size: 10px; letter-spacing: .04em; background: var(--surface2); }
+  .gov-feature-cell { min-width: 240px; }
+  .gov-feature-name { font-weight: 600; color: var(--text); }
+  .gov-feature-meta { color: var(--muted); font-size: 10px; margin-top: 2px; }
+  .gov-cell { white-space: nowrap; }
+  .gov-status {
+    display: inline-flex; align-items: center; gap: 4px; font-size: 10px;
+    border-radius: 999px; border: 1px solid var(--border); padding: 1px 7px;
+  }
+  .gov-status.pass { color: var(--green); border-color: rgba(34,197,94,.35); background: rgba(34,197,94,.08); }
+  .gov-status.warn { color: var(--amber); border-color: rgba(245,158,11,.35); background: rgba(245,158,11,.08); }
+  .gov-status.fail { color: var(--red); border-color: rgba(239,68,68,.35); background: rgba(239,68,68,.08); }
+  .gov-status.na { color: var(--muted); }
+  .gov-status.policy { box-shadow: inset 0 0 0 1px rgba(245,158,11,.45); }
+  .gov-link { margin-left: 6px; font-size: 10px; }
+  .outcome-feature { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:12px; }
+  .outcome-feature-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px; }
+  .outcome-feature-name { font-size:14px; font-weight:600; color:var(--text); }
+  .outcome-problem { font-size:11px; color:var(--muted); line-height:1.5; margin-bottom:14px; font-style:italic; }
+  .outcome-metrics { display:flex; flex-direction:column; gap:8px; }
+  .metric-row { background:var(--surface2); border-radius:6px; padding:10px 12px; }
+  .metric-name { font-size:12px; font-weight:600; color:var(--text); margin-bottom:4px; }
+  .metric-meta { display:flex; gap:16px; font-size:10px; color:var(--muted); margin-bottom:6px; flex-wrap:wrap; }
+  .metric-signal { display:flex; align-items:center; gap:6px; font-size:11px; margin-bottom:4px; }
+  .metric-evidence { font-size:11px; color:var(--muted); margin-top:4px; font-style:italic; }
+  .metric-stories { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+  .metric-story-tag { font-size:10px; padding:2px 6px; border-radius:4px; border:1px solid var(--border); color:var(--muted); }
+  .metric-story-tag.done { color:var(--green); border-color:rgba(34,197,94,.3); }
+  .signal-not-measured { color:var(--muted); }
+  .signal-on-track  { color:var(--green); }
+  .signal-at-risk   { color:var(--amber); }
+  .signal-off-track { color:var(--red); }
+  .outcome-loop-score { display:flex; align-items:center; gap:8px; font-size:11px; padding:8px 10px; background:var(--surface2); border-radius:6px; margin-top:12px; color:var(--muted); }
+  .loop-dots { display:flex; gap:3px; }
+  .loop-dot { width:8px; height:8px; border-radius:50%; background:var(--border); }
+  .loop-dot.on-track  { background:var(--green); }
+  .loop-dot.at-risk   { background:var(--amber); }
+  .loop-dot.off-track { background:var(--red); }
+  .loop-badge { font-size:10px; color:var(--muted); margin-top:4px; display:inline-flex; align-items:center; gap:4px; }
+  /* metric edit */
+  .metric-edit-btn { background:none; border:1px solid var(--border); color:var(--muted); border-radius:4px; padding:2px 7px; font-size:10px; cursor:pointer; float:right; margin-left:8px; }
+  .metric-edit-btn:hover { color:var(--text); border-color:var(--text); }
+  .metric-edit-form { background:var(--surface2); border-radius:6px; padding:10px 12px; display:flex; flex-direction:column; gap:8px; }
+  .metric-edit-form label { font-size:10px; color:var(--muted); display:block; margin-bottom:2px; }
+  .metric-edit-form select, .metric-edit-form textarea, .metric-edit-form input[type=date] {
+    width:100%; background:var(--bg); color:var(--text); border:1px solid var(--border); border-radius:4px;
+    padding:5px 8px; font-size:11px; font-family:inherit; box-sizing:border-box;
+  }
+  .metric-edit-form textarea { resize:vertical; min-height:52px; line-height:1.5; }
+  .metric-edit-form select:focus, .metric-edit-form textarea:focus, .metric-edit-form input:focus { outline:none; border-color:var(--blue); }
+  .metric-edit-actions { display:flex; gap:6px; }
+  .metric-save-btn { background:var(--blue); color:#fff; border:none; border-radius:4px; padding:4px 14px; font-size:11px; cursor:pointer; }
+  .metric-save-btn:hover { opacity:.85; }
+  .metric-cancel-btn { background:none; border:1px solid var(--border); color:var(--muted); border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer; }
+  .metric-cancel-btn:hover { color:var(--text); }
+  #download-btn { background:none; border:1px solid var(--border); color:var(--muted); border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; }
+  #download-btn:hover { color:var(--text); border-color:var(--text); }
+  #download-btn.dirty { color:var(--green); border-color:rgba(34,197,94,.5); }
+</style>
+</head>
+<body>
+
+<!-- ───────────── HEADER ───────────── -->
+<header>
+  <h1>🗂 Pipeline</h1>
+  <span class="sep">|</span>
+
+  <div class="filter-group">
+    <label>Risk</label>
+    <select id="filter-health" title="Risk signal: blocked / at risk / moving">
+      <option value="">All</option>
+      <option value="red">🔴 Blocked</option>
+      <option value="amber">🟡 At risk</option>
+      <option value="green">🟢 Moving</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Track</label>
+    <select id="filter-track">
+      <option value="">All</option>
+      <option value="short">Short</option>
+      <option value="standard">Standard</option>
+      <option value="programme-workstream">Programme</option>
+      <option value="library">Library</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Team</label>
+    <select id="filter-team">
+      <option value="">All</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Action</label>
+    <select id="filter-action" title="Who/what owns the next move">
+      <option value="">All</option>
+      <option value="human">Needs human</option>
+      <option value="processing">Processing</option>
+      <option value="blocked">Blocked</option>
+      <option value="done">Done</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Search</label>
+    <input type="text" id="filter-search" placeholder="feature / story name…" style="width:160px">
+  </div>
+
+  <button class="btn" id="expand-all-btn" title="Expand all (e)">Expand all</button>
+  <button class="btn" id="collapse-all-btn" title="Collapse all (c)">Collapse all</button>
+  <button class="btn active" id="toggle-loop-group-btn" title="Toggle grouped loop layout (g)">Loop grouped</button>
+  <button class="btn" id="governance-btn" title="Governance and compliance view (v)">🛡 Governance</button>
+  <button class="btn" id="outcomes-btn" title="Outcomes view (o)">📊 Outcomes</button>
+  <button class="btn" id="story-map-btn" title="Story map view (m)">🗺 Story Map</button>
+  <button class="btn" id="library-btn" title="Library evolution view (l)">🧱 Library</button>
+
+  <div class="filter-group">
+    <label>Columns</label>
+    <div class="range-wrap">
+      <input type="range" id="column-width-slider" min="160" max="360" step="10" value="220">
+      <span class="range-val" id="column-width-label">220px</span>
+    </div>
+  </div>
+  <button class="btn active" id="toggle-empty-shrink-btn" title="Auto-shrink columns with no cards">Auto-shrink empty</button>
+  <button class="btn" id="reset-col-width-btn" title="Reset column widths">Reset cols</button>
+
+  <div class="spacer"></div>
+
+  <div class="legend">
+    <div class="legend-item"><div class="dot green"></div>Moving</div>
+    <div class="legend-item"><div class="dot amber"></div>At risk</div>
+    <div class="legend-item"><div class="dot red"></div>Blocked</div>
+  </div>
+
+  <span id="last-updated"></span>
+  <label id="load-file-btn" class="btn" title="Load pipeline-state.json from disk" style="cursor:pointer">
+    📂 Load file
+    <input type="file" id="file-input" accept=".json">
+  </label>
+  <button id="reload-btn" title="Reload state file">↺ Reload</button>
+  <button id="download-btn" title="Download current state as pipeline-state.json">⬇ Download</button>
+</header>
+
+<!-- ───────────── SUMMARY ───────────── -->
+<div id="summary-bar"></div>
+<div id="action-queue"></div>
+<div id="loop-structure"></div>
+
+<!-- ───────────── BOARD ───────────── -->
+<div id="board"></div>
+
+<!-- ───────────── OUTCOMES VIEW ───────────── -->
+<div id="outcomes-board"></div>
+<div id="story-map-board"></div>
+<div id="library-board"></div>
+<div id="governance-board"></div>
+
+<div id="story-stub-overlay"></div>
+<div id="story-stub-modal">
+  <div id="story-stub-head">
+    <div id="story-stub-title"></div>
+    <button id="story-stub-close">✕ Close</button>
+  </div>
+  <div id="story-stub-body"></div>
+</div>
+
+<!-- ───────────── STORY DRAWER ───────────── -->
+<div id="drawer-overlay"></div>
+<div id="drawer">
+  <button id="drawer-close">✕</button>
+  <div id="drawer-content"></div>
+</div>
+
+<!-- ───────────── MARKDOWN VIEWER ───────────── -->
+<div id="md-overlay"></div>
+<div id="md-pane">
+  <div id="md-toolbar">
+    <span id="md-title"></span>
+    <span id="md-status"></span>
+    <button class="md-tab-btn active" id="md-tab-preview">Preview</button>
+    <button class="md-tab-btn" id="md-tab-raw">✏️ Edit</button>
+    <button class="md-tab-btn" id="md-tab-form" style="display:none">Form</button>
+    <button class="md-tab-btn" id="md-tab-diff" style="display:none">Diff</button>
+    <button id="md-copy-patch" style="display:none">Copy patch</button>
+    <button id="md-open-vscode" style="display:none" title="Open this file in VS Code">📦 VS Code</button>
+    <button id="md-suggest-copilot" style="display:none" title="Copy a Copilot prompt to apply this diff">✨ Suggest</button>
+    <button id="md-save-draft">Save draft</button>
+    <button id="md-reset-draft">Reset</button>
+    <button id="md-drafts-btn" title="View all saved drafts">Drafts <span class="draft-badge" id="draft-badge" style="display:none"></span></button>
+    <button id="md-close">✕ Close</button>
+  </div>
+  <div id="md-validation"></div>
+  <div id="md-conflict"></div>
+  <div id="md-body">
+    <div class="md-content active" id="md-content"></div>
+    <div id="md-format-bar">
+      <button class="fmt-btn" data-fmt="bold"      title="Bold (Ctrl+B)"><strong>B</strong></button>
+      <button class="fmt-btn" data-fmt="italic"    title="Italic (Ctrl+I)"><em>I</em></button>
+      <button class="fmt-btn" data-fmt="strike"    title="Strikethrough"><s>S</s></button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-fmt="h2"        title="Heading 2">H2</button>
+      <button class="fmt-btn" data-fmt="h3"        title="Heading 3">H3</button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-fmt="ul"        title="Bullet list">• List</button>
+      <button class="fmt-btn" data-fmt="ol"        title="Numbered list">1. List</button>
+      <button class="fmt-btn" data-fmt="checkbox"  title="Checkbox">[ ] Check</button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-fmt="code"      title="Inline code"><code>`code`</code></button>
+      <button class="fmt-btn" data-fmt="codeblock" title="Code block"><code>```block```</code></button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-fmt="link"      title="Link">🔗 Link</button>
+      <button class="fmt-btn" data-fmt="hr"        title="Horizontal rule">— Rule</button>
+    </div>
+    <textarea id="md-editor" spellcheck="false"></textarea>
+    <div id="md-form"></div>
+    <div id="md-diff"></div>
+  </div>
+</div>
+
+<!-- ───────────────── DRAFT LIST PANEL ───────────────── -->
+<div id="draft-list-overlay"></div>
+<div id="draft-list-panel">
+  <div id="draft-list-header">
+    <h3>Saved drafts</h3>
+    <button id="draft-list-close">✕ Close</button>
+  </div>
+  <div id="draft-list-body"></div>
+</div>
+
+<div id="kbd-hint">e = expand all &nbsp;·&nbsp; c = collapse all &nbsp;·&nbsp; g = loop grouped &nbsp;·&nbsp; v = governance &nbsp;·&nbsp; o = outcomes &nbsp;·&nbsp; l = library &nbsp;·&nbsp; m = story map &nbsp;·&nbsp; [ / ] = narrower / wider &nbsp;·&nbsp; 0 = reset widths &nbsp;·&nbsp; Esc = close &nbsp;·&nbsp; in viewer: d = diff &middot; s = save draft &nbsp;·&nbsp; in Outcomes: ✏️ to edit a metric</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+const STATE_FILE = 'pipeline-state.json';
+
+const STAGES = [
+  { id: 'ideation',            label: 'Ideation' },
+  { id: 'discovery',           label: 'Discovery' },
+  { id: 'benefit-metric',      label: 'Benefit Metric' },
+  { id: 'definition',          label: 'Definition' },
+  { id: 'spike',               label: 'Spike' },
+  { id: 'review',              label: 'Review' },
+  { id: 'test-plan',           label: 'Test Plan' },
+  { id: 'definition-of-ready', label: 'Def of Ready' },
+  { id: 'branch-setup',        label: 'Branch Setup' },
+  { id: 'implementation-plan', label: 'Impl Plan' },
+  { id: 'subagent-execution',  label: 'Execution' },
+  { id: 'implementation-review', label: 'Impl Review' },
+  { id: 'verify-completion',   label: 'Verify' },
+  { id: 'branch-complete',     label: 'Branch Done' },
+  { id: 'definition-of-done',  label: 'Def of Done' },
+  { id: 'trace',               label: 'Trace' },
+  { id: 'release-pending',     label: 'Release Pending' },
+  { id: 'released',            label: 'Released' },
+  { id: 'stalled',             label: 'Stalled' },
+];
+
+const META_STAGES = ['loop-design', 'token-optimization', 'org-mapping', 'scale-pipeline'];
+const INNER_LOOP_STAGE_ORDER = ['branch-setup', 'implementation-plan', 'subagent-execution', 'implementation-review', 'verify-completion', 'branch-complete'];
+const OUTER_LOOP_STAGE_ORDER = ['ideation', 'discovery', 'benefit-metric', 'definition', 'spike', 'review', 'test-plan', 'definition-of-ready', 'definition-of-done', 'trace', 'release-pending', 'released'];
+const INNER_LOOP_STAGES = new Set(INNER_LOOP_STAGE_ORDER);
+const PIPELINE_STAGE_ORDER = ['ideation', 'discovery', 'benefit-metric', 'definition', 'spike', 'review', 'test-plan', 'definition-of-ready', 'branch-setup', 'implementation-plan', 'subagent-execution', 'implementation-review', 'verify-completion', 'branch-complete', 'definition-of-done', 'trace', 'release-pending', 'released'];
+
+const GOVERNANCE_GATES = [
+  { id: 'review',              label: 'Review',    skill: '/review',              skillPath: 'skills/review/SKILL.md',              criteria: 'No HIGH findings before progression',                      artefact: f => `../artefacts/${f.slug}/review/` },
+  { id: 'test-plan',           label: 'Test Plan', skill: '/test-plan',           skillPath: 'skills/test-plan/SKILL.md',           criteria: 'Failing tests and verification script prepared',            artefact: f => `../artefacts/${f.slug}/test-plans/` },
+  { id: 'definition-of-ready', label: 'DoR',       skill: '/definition-of-ready', skillPath: 'skills/definition-of-ready/SKILL.md', criteria: 'All hard blocks pass and sign-off complete',                artefact: f => `../artefacts/${f.slug}/dor/` },
+  { id: 'verify-completion',   label: 'Verify',    skill: '/verify-completion',   skillPath: 'skills/verify-completion/SKILL.md',   criteria: 'Fresh evidence run before completion claims',               artefact: f => `../artefacts/${f.slug}/verification-scripts/` },
+  { id: 'definition-of-done',  label: 'DoD',       skill: '/definition-of-done',  skillPath: 'skills/definition-of-done/SKILL.md',  criteria: 'Post-merge AC/test coverage validated',                     artefact: f => `../artefacts/${f.slug}/dod/` },
+  { id: 'trace',               label: 'Trace',     skill: '/trace',               skillPath: 'skills/trace/SKILL.md',               criteria: 'Traceability chain intact across artefacts',                artefact: f => `../artefacts/${f.slug}/trace/trace.md` },
+  { id: 'release',             label: 'Release',   skill: '/release',             skillPath: 'skills/release/SKILL.md',             criteria: 'Release bundle/checklist produced for deployment',          artefact: f => `../artefacts/${f.slug}/release/release-notes-technical.md` },
+];
+
+// Pipeline-authority skills referenced in the governance view but not gate-checked directly.
+// Their descriptions and step requirements inform the gate criteria context.
+const META_SKILL_REFS = [
+  { id: 'workflow',    label: 'Workflow',    skill: '/workflow',    skillPath: 'skills/workflow/SKILL.md',    fallback: 'Pipeline navigator — defines what stage each feature is at and what skill runs next.' },
+  { id: 'org-mapping', label: 'Org Mapping', skill: '/org-mapping', skillPath: 'skills/org-mapping/SKILL.md', fallback: 'Maps pipeline steps to org-specific terminology, governance gates, and approval processes.' },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────────────────────────────────────
+let allData = null;
+let activeFilters = { health: '', track: '', team: '', action: '', search: '' };
+let openFeatures = new Set();   // feature slugs with expanded card body
+let openEpics    = new Set();   // epic slugs with expanded story list
+let openStories      = new Set();   // story slugs with expanded detail
+let openTaskLists    = new Set();   // story keys with task list expanded inline
+let openDoneSections = new Set();   // stage ids with 'completed' section expanded
+let drawerStory  = null;
+let viewMode = 'stage'; // 'stage' | 'governance' | 'outcomes' | 'story-map' | 'library'
+let editingMetric = null; // { featureSlug, metricId }
+let storyMapState = {
+  strategy: 'vertical-slice',
+  compare: false,
+  compareStrategy: 'walking-skeleton',
+};
+let mdCurrentPath  = '';
+let mdOriginalText = '';
+let mdDraftText    = '';
+let mdMode         = 'preview'; // 'preview' | 'raw' | 'form'
+let mdArtefactType = 'generic'; // detected from path for validation + form
+let mdVscodeBase   = '';        // workspace-root prefix stripped when building vscode:// URI
+let isDirty = false;
+let pipelineLayout = 'loop-grouped'; // 'flat' | 'loop-grouped'
+let governanceGateFilter = ''; // gate id for fail-focused filtering
+// Strict policy: warn → fail for regulated features.
+// Initialised from pipeline-state config.regulated once data loads.
+// User toggle persisted in localStorage so it survives page reloads.
+let governanceStrictPolicy = (localStorage.getItem('gov-strict-policy') === 'true');
+let skillMetadata = {}; // { gateId | metaId: { description: '...', loaded: true } }
+let columnUi = {
+  globalWidth: 220,
+  autoShrinkEmpty: true,
+  stageWidths: {},
+};
+
+const COL_MIN = 160;
+const COL_MAX = 360;
+const COL_STEP = 10;
+const PROCESSING_STALE_MINUTES = 120;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA LOADING
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadState() {
+  // Try fetch first (works with VS Code Live Server, GitHub Pages, etc.).
+  // On file:// the browser blocks fetch, so we silently fall back to the
+  // drop-zone picker so the user can load the file from disk — no server needed.
+  try {
+    const resp = await fetch(STATE_FILE + '?_=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    allData = normalizeData(await resp.json());
+  } catch (e) {
+    showDropZone();
+    return;
+  }
+  // render() is outside the fetch catch — a JS render error shows as an error,
+  // not a false "no data" drop zone.
+  try { render(); } catch (re) { showError('render error: ' + re.message + '\n' + re.stack); }
+  // Attempt to load live skill descriptions in the background; re-render when done
+  // so the governance view picks up any updates without blocking initial display.
+  loadSkillMetadata().then(() => { try { render(); } catch (_) {} });
+}
+
+function normalizeData(data) {
+  // Accept either `slug` or `id` on features, epics, and stories.
+  // Skills may write `id`; the viz uses `slug` internally.
+  (data.features || []).forEach(f => {
+    f.slug = f.slug || f.id;
+    (f.epics || []).forEach(e => {
+      e.slug = e.slug || e.id;
+      (e.stories || []).forEach(s => {
+        s.slug  = s.slug  || s.id;
+        s.tasks = s.tasks || [];
+      });
+    });
+  });
+  (data.programmes || []).forEach(p => { p.slug = p.slug || p.id; });
+
+  // Apply config.regulated from pipeline-state as the default strict-policy state,
+  // but only when there is no explicit user preference already stored in localStorage.
+  // This bridges context.yml (meta.regulated) → pipeline-state (config.regulated) → viz.
+  if (localStorage.getItem('gov-strict-policy') === null) {
+    const cfgRegulated = data.config && data.config.regulated === true;
+    governanceStrictPolicy = cfgRegulated;
+  }
+
+  return data;
+}
+
+function loadFromText(text) {
+  try {
+    allData = normalizeData(JSON.parse(text));
+    const dz = document.getElementById('drop-zone');
+    if (dz) dz.remove();
+    try { render(); } catch (re) { showError('render error: ' + re.message + '\n' + re.stack); }
+  } catch (e) {
+    showError('parse error: ' + e.message);
+    return;
+  }
+  // Also attempt skill metadata when loading via file picker.
+  loadSkillMetadata().then(() => { try { render(); } catch (_) {} });
+}
+
+function showError(msg) {
+  document.getElementById('board').innerHTML =
+    `<div style="padding:24px;color:var(--red);font-family:monospace;white-space:pre-wrap;font-size:12px"><strong>Error loading visualiser</strong>\n${msg}</div>`;
+}
+
+window.onerror = (msg, src, ln, col, err) => {
+  showError(msg + ' (' + src + ':' + ln + ')' + (err ? '\n' + err.stack : ''));
+};
+
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => loadFromText(e.target.result);
+  reader.readAsText(file);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SKILL METADATA LOADING
+// Fetches SKILL.md files relative to this page's URL and parses their YAML
+// frontmatter description. Works when served (VS Code Live Server, GitHub Pages).
+// Silently falls back to hardcoded criteria on file:// or if file is absent.
+// ─────────────────────────────────────────────────────────────────────────────
+function parseFrontmatterDescription(text) {
+  // Match YAML frontmatter block: --- ... ---
+  const fmMatch = text.match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!fmMatch) return null;
+  const fm = fmMatch[1];
+  // Block scalar (folded) description: description: >\n  line1\n  line2
+  const blockMatch = fm.match(/description:\s*>\s*\n((?:[ \t]+[^\n]*\n?)+)/);
+  if (blockMatch) {
+    return blockMatch[1]
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+  }
+  // Single-line description: description: some text
+  const lineMatch = fm.match(/description:\s*(.+)/);
+  return lineMatch ? lineMatch[1].trim() : null;
+}
+
+async function loadSkillMetadata() {
+  const allSkills = [
+    ...GOVERNANCE_GATES.map(g => ({ id: g.id, path: g.skillPath })),
+    ...META_SKILL_REFS.map(m => ({ id: m.id, path: m.skillPath })),
+  ];
+  const results = await Promise.allSettled(
+    allSkills.map(async ({ id, path }) => {
+      const resp = await fetch(path + '?_=' + Date.now());
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const text = await resp.text();
+      const description = parseFrontmatterDescription(text);
+      if (!description) throw new Error('no description in frontmatter');
+      return { id, description };
+    })
+  );
+  results.forEach((r, i) => {
+    if (r.status === 'fulfilled') {
+      skillMetadata[r.value.id] = { description: r.value.description, loaded: true };
+    }
+  });
+}
+
+function skillCriteria(gateId) {
+  return skillMetadata[gateId]?.description || null;
+}
+
+function skillLoaded(id) {
+  return !!skillMetadata[id]?.loaded;
+}
+
+
+function showDropZone() {
+  const board = document.getElementById('board');
+  board.innerHTML = `
+    <div id="drop-zone">
+      <div class="drop-icon">📄</div>
+      <h2>Load pipeline-state.json</h2>
+      <p>
+        Drag and drop <strong>pipeline-state.json</strong> here,<br>
+        or click <em>Load file</em> in the header to browse for it.<br><br>
+        <span style="font-size:11px">
+          The file lives at <code>.github/pipeline-state.json</code> in your repo.
+          Skills populate it automatically as you run them.
+        </span>
+      </p>
+      <button id="browse-btn">Browse…</button>
+    </div>`;
+
+  document.getElementById('browse-btn').addEventListener('click', () => {
+    document.getElementById('file-input').click();
+  });
+
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', ()  => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) readFile(file);
+  });
+
+  document.getElementById('summary-bar').innerHTML = '';
+  const aq = document.getElementById('action-queue');
+  aq.classList.remove('active');
+  aq.innerHTML = '';
+  document.getElementById('last-updated').textContent = '';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTERING
+// ─────────────────────────────────────────────────────────────────────────────
+function filteredFeatures() {
+  if (!allData) return [];
+  return allData.features.filter(f => {
+    if (activeFilters.health && f.health !== activeFilters.health) return false;
+    if (activeFilters.track  && f.track  !== activeFilters.track)  return false;
+    if (activeFilters.team   && f.team   !== activeFilters.team)   return false;
+    if (activeFilters.action) {
+      const actionState = featureActionMeta(f).state;
+      if (actionState !== activeFilters.action) return false;
+    }
+    if (activeFilters.search) {
+      const q = activeFilters.search.toLowerCase();
+      const inFeature = f.name.toLowerCase().includes(q) || f.slug.toLowerCase().includes(q);
+      const inStory   = (f.epics || []).some(e =>
+        (e.stories || []).some(s => s.name.toLowerCase().includes(q) || s.slug.toLowerCase().includes(q)));
+      if (!inFeature && !inStory) return false;
+    }
+    return true;
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUMMARY BAR
+// ─────────────────────────────────────────────────────────────────────────────
+function renderSummary(features) {
+  const bar = document.getElementById('summary-bar');
+  if (!allData || features.length === 0) { bar.innerHTML = ''; return; }
+  const total   = features.length;
+  const blocked = features.filter(f => f.health === 'red').length;
+  const amber   = features.filter(f => f.health === 'amber').length;
+  const green   = features.filter(f => f.health === 'green').length;
+  const human   = features.filter(f => featureActionMeta(f).state === 'human').length;
+  const processing = features.filter(f => featureActionMeta(f).state === 'processing').length;
+  const stories = features.flatMap(f => (f.epics || []).flatMap(e => e.stories || []));
+  const relReady = stories.filter(s => s.releaseReady).length;
+  bar.innerHTML = `
+    <div class="summary-stat"><span class="val">${total}</span> features</div>
+    <div class="summary-stat"><span class="val" style="color:var(--red)">${blocked}</span> blocked</div>
+    <div class="summary-stat"><span class="val" style="color:var(--amber)">${amber}</span> at risk</div>
+    <div class="summary-stat"><span class="val" style="color:var(--green)">${green}</span> moving</div>
+    <div class="summary-stat"><span class="val" style="color:#93c5fd">${human}</span> needs human</div>
+    <div class="summary-stat"><span class="val" style="color:#5eead4">${processing}</span> processing</div>
+    <div class="summary-stat"><span class="val">${stories.length}</span> stories total</div>
+    ${relReady > 0 ? `<div class="summary-stat"><span class="val" style="color:var(--teal)">${relReady}</span> release-ready</div>` : ''}
+  `;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BOARD
+// ─────────────────────────────────────────────────────────────────────────────
+function render() {
+  const features = filteredFeatures();
+  renderSummary(features);
+  const board = document.getElementById('board');
+  const governance = document.getElementById('governance-board');
+  const outcomes = document.getElementById('outcomes-board');
+  const library = document.getElementById('library-board');
+  const storyMap = document.getElementById('story-map-board');
+  const loopStructure = document.getElementById('loop-structure');
+  const actionQueue = document.getElementById('action-queue');
+
+  if (viewMode === 'governance') {
+    board.style.display = 'none';
+    actionQueue.classList.remove('active');
+    loopStructure.classList.remove('active');
+    outcomes.classList.remove('active');
+    outcomes.innerHTML = '';
+    library.classList.remove('active');
+    library.innerHTML = '';
+    storyMap.classList.remove('active');
+    storyMap.innerHTML = '';
+    governance.classList.add('active');
+    renderGovernance(features);
+  } else if (viewMode === 'outcomes') {
+    board.style.display = 'none';
+    actionQueue.classList.remove('active');
+    loopStructure.classList.remove('active');
+    governance.classList.remove('active');
+    governance.innerHTML = '';
+    library.classList.remove('active');
+    storyMap.classList.remove('active');
+    storyMap.innerHTML = '';
+    outcomes.classList.add('active');
+    renderOutcomes(features);
+  } else if (viewMode === 'library') {
+    board.style.display = 'none';
+    actionQueue.classList.remove('active');
+    loopStructure.classList.remove('active');
+    governance.classList.remove('active');
+    governance.innerHTML = '';
+    outcomes.classList.remove('active');
+    outcomes.innerHTML = '';
+    storyMap.classList.remove('active');
+    storyMap.innerHTML = '';
+    library.classList.add('active');
+    renderLibrary(features);
+  } else if (viewMode === 'story-map') {
+    board.style.display = 'none';
+    actionQueue.classList.remove('active');
+    loopStructure.classList.remove('active');
+    governance.classList.remove('active');
+    governance.innerHTML = '';
+    outcomes.classList.remove('active');
+    outcomes.innerHTML = '';
+    library.classList.remove('active');
+    library.innerHTML = '';
+    storyMap.classList.add('active');
+    renderStoryMap(features);
+  } else {
+    board.style.display = '';
+    actionQueue.classList.add('active');
+    loopStructure.classList.add('active');
+    governance.classList.remove('active');
+    governance.innerHTML = '';
+    outcomes.classList.remove('active');
+    outcomes.innerHTML = '';
+    library.classList.remove('active');
+    library.innerHTML = '';
+    storyMap.classList.remove('active');
+    storyMap.innerHTML = '';
+    renderActionQueue(features);
+    renderLoopStructure(features);
+    renderBoard(features);
+  }
+  populateTeamFilter();
+  updateTimestamp();
+}
+
+function renderActionQueue(features) {
+  const panel = document.getElementById('action-queue');
+  const actionable = features
+    .map(f => ({ feature: f, meta: featureActionMeta(f) }))
+    .filter(x => x.meta.state === 'human' || x.meta.state === 'blocked')
+    .sort((a, b) => featureAgeMinutes(b.feature) - featureAgeMinutes(a.feature));
+
+  if (actionable.length === 0) {
+    panel.innerHTML = `<div class="aq-empty">No human actions waiting right now.</div>`;
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="aq-header">
+      <span class="aq-title">Action queue</span>
+      <span class="aq-meta">${actionable.length} waiting</span>
+    </div>
+    <div class="aq-list">
+      ${actionable.slice(0, 12).map(({ feature, meta }) => `
+        <div class="aq-item">
+          <span class="aq-state ${meta.state}">${meta.label}</span>
+          <button data-action="focus-feature" data-slug="${esc(feature.slug)}">${esc(feature.name)}</button>
+          <span class="aq-age">${formatAge(featureAgeMinutes(feature))}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderLoopStructure(features) {
+  const outerCount = features.filter(f => loopType(f.stage) === 'outer').length;
+  const innerCount = features.filter(f => loopType(f.stage) === 'inner').length;
+  const outerStages = OUTER_LOOP_STAGE_ORDER.map(stageLabel).join(' -> ');
+  const innerStages = INNER_LOOP_STAGE_ORDER.map(stageLabel).join(' -> ');
+  document.getElementById('loop-structure').innerHTML = `
+    <div class="loop-band outer">
+      <strong>Outer loop (${outerCount})</strong>
+      <span class="loop-stage-list">${outerStages}</span>
+    </div>
+    <div class="loop-band inner">
+      <strong>Inner loop (${innerCount})</strong>
+      <span class="loop-stage-list">${innerStages}</span>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OUTCOMES VIEW
+// ─────────────────────────────────────────────────────────────────────────────
+function signalMeta(signal) {
+  switch (signal) {
+    case 'on-track':  return { cls: 'signal-on-track',  icon: '🟢', label: 'On track' };
+    case 'at-risk':   return { cls: 'signal-at-risk',   icon: '🟡', label: 'At risk' };
+    case 'off-track': return { cls: 'signal-off-track', icon: '🔴', label: 'Off track' };
+    default:          return { cls: 'signal-not-measured', icon: '⚪', label: 'Not yet measured' };
+  }
+}
+
+function metricRowHTML(m, f) {
+  // If this metric is currently being edited, render the edit form instead
+  if (editingMetric && editingMetric.featureSlug === f.slug && editingMetric.metricId === m.id) {
+    return editMetricFormHTML(m, f.slug);
+  }
+  const sm = signalMeta(m.signal);
+  const allStories = (f.epics || []).flatMap(e => e.stories || []);
+  const storyTags = (m.contributingStories || []).map(slug => {
+    const s = allStories.find(s2 => s2.slug === slug);
+    const done = s && (s.dodStatus === 'complete' || s.prStatus === 'merged');
+    return `<span class="metric-story-tag ${done ? 'done' : ''}">${done ? '✓' : '⏳'} ${esc(slug)}</span>`;
+  }).join('');
+  return `
+  <div class="metric-row" data-feature="${esc(f.slug)}" data-metric="${esc(m.id)}">
+    <div class="metric-name">
+      ${esc(m.name)}
+      <button class="metric-edit-btn" data-action="edit-metric" data-feature="${esc(f.slug)}" data-metric="${esc(m.id)}">✏️ Edit</button>
+    </div>
+    <div class="metric-meta">
+      ${m.target   ? `<span>Target: ${esc(m.target)}</span>`   : ''}
+      ${m.baseline ? `<span>Baseline: ${esc(m.baseline)}</span>` : ''}
+      ${m.lastMeasured ? `<span>Last measured: ${esc(m.lastMeasured)}</span>` : ''}
+    </div>
+    <div class="metric-signal ${sm.cls}">${sm.icon} ${sm.label}</div>
+    ${m.evidence ? `<div class="metric-evidence">${esc(m.evidence)}</div>` : ''}
+    ${storyTags ? `<div class="metric-stories">${storyTags}</div>` : ''}
+  </div>`;
+}
+
+function editMetricFormHTML(m, featureSlug) {
+  const signals = ['not-yet-measured', 'on-track', 'at-risk', 'off-track'];
+  const opts = signals.map(s => `<option value="${s}" ${m.signal === s ? 'selected' : ''}>${signalMeta(s).icon} ${signalMeta(s).label}</option>`).join('');
+  return `
+  <div class="metric-edit-form" data-feature="${esc(featureSlug)}" data-metric="${esc(m.id)}">
+    <div><strong style="font-size:12px">${esc(m.name)}</strong></div>
+    <div>
+      <label>Signal</label>
+      <select id="edit-signal-${esc(m.id)}">${opts}</select>
+    </div>
+    <div>
+      <label>Evidence (what did you observe?)</label>
+      <textarea id="edit-evidence-${esc(m.id)}" placeholder="e.g. 3/4 distributed participants voted — 75%">${esc(m.evidence || '')}</textarea>
+    </div>
+    <div>
+      <label>Date measured</label>
+      <input type="date" id="edit-date-${esc(m.id)}" value="${esc(m.lastMeasured || '')}">
+    </div>
+    <div class="metric-edit-actions">
+      <button class="metric-save-btn" data-action="save-metric" data-feature="${esc(featureSlug)}" data-metric="${esc(m.id)}">Save</button>
+      <button class="metric-cancel-btn" data-action="cancel-edit">Cancel</button>
+    </div>
+  </div>`;
+}
+
+function loopScoreHTML(f) {
+  const metrics = f.metrics || [];
+  if (metrics.length === 0) return '';
+  const onTrack  = metrics.filter(m => m.signal === 'on-track').length;
+  const measured = metrics.filter(m => m.signal && m.signal !== 'not-yet-measured').length;
+  const dots = metrics.map(m => {
+    const cls = m.signal === 'on-track' ? 'on-track' : m.signal === 'at-risk' ? 'at-risk' : m.signal === 'off-track' ? 'off-track' : '';
+    return `<div class="loop-dot${cls ? ' ' + cls : ''}"></div>`;
+  }).join('');
+  const scoreCol = onTrack === metrics.length && onTrack > 0 ? 'var(--green)' : onTrack > 0 ? 'var(--amber)' : 'var(--muted)';
+  return `
+  <div class="outcome-loop-score">
+    <span>Loop score</span>
+    <div class="loop-dots">${dots}</div>
+    <span style="color:${scoreCol}">${onTrack}/${metrics.length} on track</span>
+    ${measured < metrics.length ? `<span>(${measured}/${metrics.length} measured)</span>` : ''}
+  </div>`;
+}
+
+function loopScoreBadgeHTML(f) {
+  const metrics = f.metrics || [];
+  if (metrics.length === 0) return '';
+  const onTrack  = metrics.filter(m => m.signal === 'on-track').length;
+  const measured = metrics.filter(m => m.signal && m.signal !== 'not-yet-measured').length;
+  const icon = onTrack === metrics.length && onTrack > 0 ? '🟢' : measured > 0 ? '🟡' : '⚪';
+  return `<span class="loop-badge">${icon} ${onTrack}/${metrics.length} metrics</span>`;
+}
+
+function outcomesFeatureHTML(f) {
+  const metrics       = f.metrics || [];
+  const discoveryPath = `../artefacts/${f.slug}/discovery.md`;
+  const bmPath        = `../artefacts/${f.slug}/benefit-metric.md`;
+  return `
+  <div class="outcome-feature">
+    <div class="outcome-feature-header">
+      <div>
+        <div class="outcome-feature-name">${esc(f.name)}</div>
+        ${f.problem ? `<div class="outcome-problem">${esc(f.problem)}</div>` : ''}
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+        <a class="drawer-link" href="${discoveryPath}">📄 Discovery</a>
+        <a class="drawer-link" href="${bmPath}">📊 Benefit metric</a>
+      </div>
+    </div>
+    ${metrics.length > 0
+      ? `<div class="outcome-metrics">${metrics.map(m => metricRowHTML(m, f)).join('')}</div>`
+      : `<div style="font-size:11px;color:var(--muted);padding:8px 0">No metrics seeded. Run <code>/benefit-metric</code> then add a <code>metrics</code> array to this feature in pipeline-state.json.</div>`}
+    ${loopScoreHTML(f)}
+  </div>`;
+}
+
+function renderOutcomes(features) {
+  const ob = document.getElementById('outcomes-board');
+  if (features.length === 0) {
+    ob.innerHTML = '<div class="empty-state"><h2>No features match your filters</h2><p>Try clearing your filters to see all features.</p></div>';
+    return;
+  }
+  ob.innerHTML = features.map(f => outcomesFeatureHTML(f)).join('');
+}
+
+function renderLibrary(features) {
+  const board = document.getElementById('library-board');
+  const metaCols = META_STAGES.map(stageId => ({
+    id: stageId,
+    label: stageLabel(stageId).replace('Meta: ', ''),
+    items: features.filter(f => f.stage === stageId),
+  }));
+  const otherLibrary = features.filter(f => f.track === 'library' && !META_STAGES.includes(f.stage));
+  if (otherLibrary.length > 0) {
+    metaCols.push({ id: 'library-other', label: 'Other Library', items: otherLibrary });
+  }
+
+  const hasCards = metaCols.some(col => col.items.length > 0);
+  if (!hasCards) {
+    board.innerHTML = `
+      <div class="empty-state" style="width:100%">
+        <h2>No library-evolution cards in meta stages</h2>
+        <p>When features are at <code>loop-design</code>, <code>token-optimization</code>, <code>org-mapping</code>, or <code>scale-pipeline</code>, they will appear here.</p>
+      </div>`;
+    return;
+  }
+
+  board.innerHTML = metaCols.map(col => `
+    <div class="col" data-stage="${col.id}" style="width:${clampColWidth(columnUi.stageWidths[col.id] || columnUi.globalWidth)}px">
+      <div class="col-header">
+        <div class="col-header-main"><span class="col-header-title">${esc(col.label)}</span></div>
+        <div class="col-tools">${col.items.length > 0 ? `<span class="col-count">${col.items.length}</span>` : ''}</div>
+      </div>
+      <div class="col-body">
+        ${col.items.length > 0 ? col.items.map(f => featureCardHTML(f)).join('') : '<div style="color:var(--border);font-size:11px;padding:4px 0">—</div>'}
+      </div>
+    </div>`).join('');
+}
+
+// ─── Story Map ────────────────────────────────────────────────────────────────
+
+function storyStrategiesFromFeature(feature) {
+  const variants = feature.storyMapStrategies || feature.strategyVariants || {};
+  const map = {};
+  ['vertical-slice', 'walking-skeleton', 'user-journey', 'risk-first'].forEach(k => {
+    if (variants[k]) map[k] = variants[k];
+  });
+  if (!Object.keys(map).length) {
+    map[feature.slicingStrategy || storyMapState.strategy] = {
+      epics: feature.epics || [],
+      isStub: true,
+    };
+  }
+  return map;
+}
+
+function pickStoryMapData(feature, strategy) {
+  const byStrategy = storyStrategiesFromFeature(feature);
+  if (byStrategy[strategy]) return byStrategy[strategy];
+  const first = Object.keys(byStrategy)[0];
+  return byStrategy[first] || { epics: [], isStub: true };
+}
+
+function storyMapStoryPath(featureSlug, storySlug) {
+  return 'artefacts/' + featureSlug + '/stories/' + storySlug + '.md';
+}
+
+function storyMapEpicsHTML(feature, strategy) {
+  const data = pickStoryMapData(feature, strategy);
+  const epics = data.epics || [];
+  if (!epics.length) {
+    return '<div class="empty-state"><h2>No epics yet</h2><p>No stories available for this strategy.</p></div>';
+  }
+  const epicCols = epics.map(function(epic) {
+    const stories = epic.stories || [];
+    const storiesHTML = stories.map(function(story) {
+      const isStub = data.isStub || !story.path;
+      const personas = story.personas || [];
+      const slug = story.slug || story.id || '';
+      const title = story.title || story.name || slug || 'Untitled story';
+      const path = story.path || storyMapStoryPath(feature.slug, slug);
+      return '<div class="story-map-story' + (isStub ? ' stub' : '') + '"'
+        + ' data-action="story-map-open"'
+        + ' data-feature="' + esc(feature.slug) + '"'
+        + ' data-story="' + esc(slug) + '"'
+        + ' data-stub="' + (isStub ? '1' : '0') + '"'
+        + ' data-path="' + esc(path) + '"'
+        + ' data-title="' + esc(title) + '"'
+        + ' data-personas="' + esc(personas.join(', ')) + '">'
+        + '<div class="story-map-story-title">' + esc(title) + '</div>'
+        + '<div class="story-map-story-slug">' + esc(slug) + '</div>'
+        + (personas.length ? '<div class="story-map-personas">' + personas.map(function(p) { return '<span class="story-map-persona">' + esc(p) + '</span>'; }).join('') + '</div>' : '')
+        + '</div>';
+    }).join('');
+    return '<div class="story-map-epic">'
+      + '<div class="story-map-epic-head">'
+      + '<div class="story-map-epic-title">' + esc(epic.title || epic.name || epic.slug || 'Untitled epic') + '</div>'
+      + '<div class="story-map-epic-meta">' + stories.length + ' ' + (stories.length === 1 ? 'story' : 'stories') + '</div>'
+      + '</div>'
+      + '<div class="story-map-story-list">' + storiesHTML + '</div>'
+      + '</div>';
+  }).join('');
+  return '<div class="story-map-surface"><div class="story-map-scroll"><div class="story-map-grid">' + epicCols + '</div></div></div>';
+}
+
+function renderStoryMap(features) {
+  const board = document.getElementById('story-map-board');
+  if (!features.length) {
+    board.innerHTML = '<div class="empty-state"><h2>No features</h2><p>Load <code>pipeline-state.json</code> to see story maps.</p></div>';
+    return;
+  }
+  const feature = features[0];
+  const strategies = storyStrategiesFromFeature(feature);
+  const keys = Object.keys(strategies);
+  if (!keys.includes(storyMapState.strategy)) storyMapState.strategy = keys[0] || 'vertical-slice';
+  if (!keys.includes(storyMapState.compareStrategy)) {
+    storyMapState.compareStrategy = keys.find(function(k) { return k !== storyMapState.strategy; }) || storyMapState.strategy;
+  }
+
+  const ALL_STRATEGIES = ['vertical-slice', 'walking-skeleton', 'user-journey', 'risk-first'];
+  const availableKeys = ALL_STRATEGIES.filter(function(k) { return keys.includes(k); })
+    .concat(keys.filter(function(k) { return !ALL_STRATEGIES.includes(k); }));
+  const strategyOptions = availableKeys.map(function(k) {
+    return '<option value="' + esc(k) + '"' + (k === storyMapState.strategy ? ' selected' : '') + '>' + esc(k) + '</option>';
+  }).join('');
+  const compareOptions = availableKeys.map(function(k) {
+    return '<option value="' + esc(k) + '"' + (k === storyMapState.compareStrategy ? ' selected' : '') + '>' + esc(k) + '</option>';
+  }).join('');
+
+  const compareToggleHTML = storyMapState.compare
+    ? '<span class="label">Compare with</span><select id="story-map-compare-strategy" class="story-map-strategy-select">' + compareOptions + '</select>'
+    : '';
+
+  const toolbarHTML = '<div class="story-map-toolbar">'
+    + '<span class="label">Feature</span>'
+    + '<span class="tag">' + esc(feature.slug || feature.id || 'unknown') + '</span>'
+    + '<span class="label">Strategy</span>'
+    + '<select id="story-map-strategy" class="story-map-strategy-select">' + strategyOptions + '</select>'
+    + '<label class="story-map-cmp-toggle"><input type="checkbox" id="story-map-compare"' + (storyMapState.compare ? ' checked' : '') + '> Compare side-by-side</label>'
+    + compareToggleHTML
+    + '</div>';
+
+  const contentHTML = storyMapState.compare
+    ? '<div class="story-map-compare-wrap">'
+      + '<div class="story-map-compare-col"><div class="story-map-compare-title">Primary: ' + esc(storyMapState.strategy) + '</div>' + storyMapEpicsHTML(feature, storyMapState.strategy) + '</div>'
+      + '<div class="story-map-compare-col"><div class="story-map-compare-title">Compare: ' + esc(storyMapState.compareStrategy) + '</div>' + storyMapEpicsHTML(feature, storyMapState.compareStrategy) + '</div>'
+      + '</div>'
+    : storyMapEpicsHTML(feature, storyMapState.strategy);
+
+  board.innerHTML = toolbarHTML + contentHTML;
+}
+
+function openStubStoryModal(title, slug, personas, path) {
+  document.getElementById('story-stub-title').textContent = title;
+  document.getElementById('story-stub-body').innerHTML = '<div class="story-stub-row"><div class="story-stub-label">Slug</div><div>' + esc(slug || '') + '</div></div>'
+    + '<div class="story-stub-row"><div class="story-stub-label">Personas</div><div>' + esc(personas || 'None') + '</div></div>'
+    + '<div class="story-stub-row"><div class="story-stub-label">Planned path</div><div>' + esc(path || '') + '</div></div>'
+    + '<div class="story-stub-row"><div class="story-stub-label">Status</div><div>Stub preview — story file not written yet. Run <code>/definition</code> to generate story artefacts.</div></div>';
+  document.getElementById('story-stub-overlay').classList.add('open');
+  document.getElementById('story-stub-modal').classList.add('open');
+}
+
+function closeStubStoryModal() {
+  document.getElementById('story-stub-overlay').classList.remove('open');
+  document.getElementById('story-stub-modal').classList.remove('open');
+}
+
+function renderGovernance(features) {
+  const board = document.getElementById('governance-board');
+  if (features.length === 0) {
+    board.innerHTML = '<div class="empty-state"><h2>No features match your filters</h2><p>Try clearing filters to inspect governance coverage.</p></div>';
+    return;
+  }
+
+  const rowsUnfiltered = features.map(f => ({
+    feature: f,
+    gates: GOVERNANCE_GATES.map(g => ({ gate: g, status: gateStatus(f, g.id) })),
+  }));
+
+  const rows = governanceGateFilter
+    ? rowsUnfiltered.filter(r => {
+        const g = r.gates.find(x => x.gate.id === governanceGateFilter);
+        return g && g.status.state === 'fail';
+      })
+    : rowsUnfiltered;
+
+  const allStatuses = rowsUnfiltered.flatMap(r => r.gates.map(g => g.status.state));
+  const passCount = allStatuses.filter(s => s === 'pass').length;
+  const warnCount = allStatuses.filter(s => s === 'warn').length;
+  const failCount = allStatuses.filter(s => s === 'fail').length;
+  const gateFailCounts = GOVERNANCE_GATES.map(g => ({
+    gate: g,
+    count: rowsUnfiltered.filter(r => {
+      const gr = r.gates.find(x => x.gate.id === g.id);
+      return gr && gr.status.state === 'fail';
+    }).length,
+  }));
+
+  // Pre-compute all complex HTML fragments as local variables.
+  // RULE: never place IIFEs, block-body arrow functions, or nested template
+  // literals inside ${} of the outer board.innerHTML template literal.
+  // The JS parser chokes on the closing } of the block body and throws
+  // "Unexpected token '}'". Always hoist complex logic to a named variable first.
+
+  const skillsLoaded = GOVERNANCE_GATES.filter(g => skillLoaded(g.id)).length;
+  const skillsTotal  = GOVERNANCE_GATES.length;
+  let skillsBadgeHTML;
+  if (skillsLoaded === skillsTotal) {
+    skillsBadgeHTML = '<span class="skill-source-badge live">&#128196; ' + skillsLoaded + '/' + skillsTotal + ' skills live</span>';
+  } else if (skillsLoaded > 0) {
+    skillsBadgeHTML = '<span class="skill-source-badge partial">&#128196; ' + skillsLoaded + '/' + skillsTotal + ' skills live</span>';
+  } else {
+    skillsBadgeHTML = '<span class="skill-source-badge default" title="Open via VS Code Live Server or GitHub Pages to load live criteria from SKILL.md files">&#128203; default criteria (serve to load live)</span>';
+  }
+
+  const gateRefItemsHTML = GOVERNANCE_GATES.map(function(g) {
+    const live = skillLoaded(g.id);
+    const desc = skillCriteria(g.id) || g.criteria;
+    const badge = live ? 'live' : 'default';
+    return '<div class="gov-ref-item">'
+      + '<div class="gov-ref-item-head">'
+      + '<div class="name">' + esc(g.label) + '</div>'
+      + '<span class="skill-source-badge ' + badge + '">' + badge + '</span>'
+      + '</div>'
+      + '<div class="skill">Skill ' + esc(g.skill) + '</div>'
+      + '<div class="criteria">' + esc(desc) + '</div>'
+      + '</div>';
+  }).join('');
+
+  const metaRefItemsHTML = META_SKILL_REFS.map(function(m) {
+    const live = skillLoaded(m.id);
+    const desc = skillCriteria(m.id) || m.fallback;
+    const badge = live ? 'live' : 'default';
+    return '<div class="gov-ref-item">'
+      + '<div class="gov-ref-item-head">'
+      + '<div class="name">' + esc(m.label) + '</div>'
+      + '<span class="skill-source-badge ' + badge + '">' + badge + '</span>'
+      + '</div>'
+      + '<div class="skill">Skill ' + esc(m.skill) + '</div>'
+      + '<div class="criteria">' + esc(desc) + '</div>'
+      + '</div>';
+  }).join('');
+
+  const gateFailPillsHTML = gateFailCounts.map(function(gf) {
+    const active = governanceGateFilter === gf.gate.id ? ' filter-active' : '';
+    return '<button class="gov-pill fail' + active + '" data-action="filter-gov-gate" data-gate="' + esc(gf.gate.id) + '">'
+      + esc(gf.gate.label) + ' fails ' + gf.count + '</button>';
+  }).join('');
+
+  const colHeadersHTML = GOVERNANCE_GATES.map(function(g) {
+    return '<th>' + esc(g.label) + '<br><span style="font-size:9px;color:var(--muted)">' + esc(g.skill) + '</span></th>';
+  }).join('');
+
+  const matrixRowsHTML = rows.map(function(r) { return governanceRowHTML(r.feature, r.gates); }).join('');
+  const emptyFilterMsg = rows.length === 0 ? '<div class="aq-empty" style="margin-top:8px">No features currently failing the selected gate.</div>' : '';
+  const clearFilterBtn  = governanceGateFilter ? '<button class="gov-btn" data-action="clear-gov-filter">Clear gate filter</button>' : '';
+  const policyNote      = governanceStrictPolicy ? 'Warn statuses for regulated features are treated as fail.' : 'Warn and fail are shown separately.';
+  const policyBtnClass  = governanceStrictPolicy ? 'gov-btn active' : 'gov-btn';
+  const policyBtnLabel  = 'Strict policy mode ' + (governanceStrictPolicy ? 'ON' : 'OFF');
+
+  board.innerHTML = `
+    <div class="gov-summary">
+      <span class="gov-pill">Features ${features.length}</span>
+      <span class="gov-pill pass">Pass ${passCount}</span>
+      <span class="gov-pill warn">Warn ${warnCount}</span>
+      <span class="gov-pill fail">Fail ${failCount}</span>
+    </div>
+    <div class="gov-controls">
+      <button class="${policyBtnClass}" data-action="toggle-gov-policy">${policyBtnLabel}</button>
+      <button class="gov-btn" data-action="export-gov-csv">Export CSV</button>
+      ${clearFilterBtn}
+      <span class="gov-note">${policyNote}</span>
+    </div>
+    <div class="gov-summary">${gateFailPillsHTML}</div>
+    <div class="gov-ref">
+      <div class="gov-ref-header">
+        <h3>Gate Criteria Reference</h3>
+        ${skillsBadgeHTML}
+      </div>
+      <div class="gov-ref-grid">${gateRefItemsHTML}</div>
+      <details class="gov-meta-ref">
+        <summary>Pipeline authority skills (workflow &amp; org-mapping)</summary>
+        <div class="gov-ref-grid" style="margin-top:8px">${metaRefItemsHTML}</div>
+      </details>
+    </div>
+    <div class="gov-matrix-wrap">
+      <table class="gov-matrix">
+        <thead><tr><th>Feature</th>${colHeadersHTML}</tr></thead>
+        <tbody>${matrixRowsHTML}</tbody>
+      </table>
+    </div>
+    ${emptyFilterMsg}`;
+}
+
+function governanceRowHTML(feature, gateResults) {
+  return `
+    <tr>
+      <td class="gov-feature-cell">
+        <div class="gov-feature-name">${esc(feature.name)}</div>
+        <div class="gov-feature-meta">${esc(feature.slug)} · ${esc(stageLabel(feature.stage))}</div>
+      </td>
+      ${gateResults.map(gr => `
+        <td class="gov-cell">
+          <span class="gov-status ${gr.status.state}${gr.status.policyEscalated ? ' policy' : ''}">${govStateIcon(gr.status.state)} ${esc(gr.status.label)}</span>
+          ${gr.status.artefact ? `<a class="drawer-link gov-link" href="${esc(gr.status.artefact)}">artefact</a>` : ''}
+        </td>`).join('')}
+    </tr>`;
+}
+
+function govStateIcon(state) {
+  if (state === 'pass') return '✓';
+  if (state === 'warn') return '!';
+  if (state === 'fail') return 'x';
+  return '·';
+}
+
+function stageRank(stageId) {
+  const i = PIPELINE_STAGE_ORDER.indexOf(stageId);
+  return i >= 0 ? i : -1;
+}
+
+function hasReachedStage(feature, stageId) {
+  return stageRank(feature.stage) >= stageRank(stageId) && stageRank(stageId) >= 0;
+}
+
+function isRegulatedFeature(feature) {
+  return feature.complianceProfile === 'regulated' || feature.regulated === true;
+}
+
+function applyGovernancePolicy(feature, status) {
+  if (!governanceStrictPolicy) return status;
+  if (!isRegulatedFeature(feature)) return status;
+  if (status.state !== 'warn') return status;
+  return {
+    ...status,
+    state: 'fail',
+    label: `${status.label} (policy)`,
+    policyEscalated: true,
+  };
+}
+
+function gateStatus(feature, gateId) {
+  const stories = allStories(feature);
+  const artefactFor = id => {
+    const g = GOVERNANCE_GATES.find(x => x.id === id);
+    return g ? g.artefact(feature) : '';
+  };
+
+  let status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+
+  if (gateId === 'review') {
+    if (stories.length === 0) status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+    else if (stories.some(s => (s.highFindings || 0) > 0)) status = { state: 'fail', label: 'HIGH findings', artefact: artefactFor(gateId) };
+    else if (stories.every(s => s.reviewStatus === 'passed')) status = { state: 'pass', label: 'Passed', artefact: artefactFor(gateId) };
+    else status = { state: 'warn', label: 'In progress', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'test-plan') {
+    if (stories.length === 0) status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+    const written = stories.filter(s => s.testPlan && s.testPlan.status === 'written' && (s.testPlan.totalTests || 0) > 0).length;
+    if (written === stories.length) status = { state: 'pass', label: 'Written', artefact: artefactFor(gateId) };
+    else if (written > 0) status = { state: 'warn', label: 'Partial', artefact: artefactFor(gateId) };
+    else status = { state: 'fail', label: 'Missing', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'definition-of-ready') {
+    if (stories.length === 0) status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+    else if (stories.some(s => s.dorStatus === 'blocked')) status = { state: 'fail', label: 'Blocked', artefact: artefactFor(gateId) };
+    else if (stories.every(s => s.dorStatus === 'signed-off')) status = { state: 'pass', label: 'Signed off', artefact: artefactFor(gateId) };
+    else status = { state: 'warn', label: 'Pending', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'verify-completion') {
+    if (stories.length === 0) status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+    // Evidence field: story.verifyStatus written by /verify-completion skill.
+    // Fall back to stage proxy (with TODO) only when no verifyStatus fields are present.
+    else if (stories.every(s => s.verifyStatus === 'passed')) status = { state: 'pass', label: 'Verified', artefact: artefactFor(gateId) };
+    else if (stories.some(s => s.verifyStatus === 'running')) status = { state: 'warn', label: 'Running', artefact: artefactFor(gateId) };
+    else if (stories.some(s => s.verifyStatus)) status = { state: 'warn', label: 'In progress', artefact: artefactFor(gateId) };
+    // TODO: replace this fallback with verifyStatus evidence — set story.verifyStatus in /verify-completion skill
+    else if (hasReachedStage(feature, 'branch-complete')) status = { state: 'warn', label: 'Verified (no evidence)', artefact: artefactFor(gateId) };
+    else status = { state: 'warn', label: 'Not started', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'definition-of-done') {
+    if (stories.length === 0) status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+    // Evidence field: story.dodStatus written by /definition-of-done skill.
+    else if (stories.every(s => s.dodStatus === 'complete')) status = { state: 'pass', label: 'Complete', artefact: artefactFor(gateId) };
+    else if (stories.some(s => s.dodStatus === 'complete')) status = { state: 'warn', label: 'In progress', artefact: artefactFor(gateId) };
+    else status = { state: 'warn', label: 'Not started', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'trace') {
+    // Evidence field: feature.traceStatus written by /trace skill.
+    if (feature.traceStatus === 'passed') status = { state: 'pass', label: 'Traced', artefact: artefactFor(gateId) };
+    else if (feature.traceStatus === 'has-findings') status = { state: 'fail', label: 'Has findings', artefact: artefactFor(gateId) };
+    else if (hasReachedStage(feature, 'definition-of-done')) status = { state: 'warn', label: 'Pending', artefact: artefactFor(gateId) };
+    else status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'release') {
+    // Evidence field: story.releaseReady (boolean) written by /definition-of-done skill.
+    // Stage is also checked because 'released' is explicitly set by the /release skill.
+    if (feature.stage === 'released' && stories.every(s => s.releaseReady === true))
+      status = { state: 'pass', label: 'Released', artefact: artefactFor(gateId) };
+    else if (feature.stage === 'released')
+      status = { state: 'warn', label: 'Released (no evidence)', artefact: artefactFor(gateId) };
+    else if (feature.stage === 'release-pending') status = { state: 'warn', label: 'Pending', artefact: artefactFor(gateId) };
+    else status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+  }
+
+  return applyGovernancePolicy(feature, status);
+}
+
+function exportGovernanceCsv(features) {
+  const rows = features.map(f => {
+    const gateStatuses = GOVERNANCE_GATES.map(g => gateStatus(f, g.id));
+    return { feature: f, gateStatuses };
+  });
+
+  const header = ['feature_slug', 'feature_name', 'track', 'team', 'stage', ...GOVERNANCE_GATES.map(g => `${g.id}_status`)];
+  const lines = [header.join(',')];
+
+  rows.forEach(r => {
+    const values = [
+      r.feature.slug,
+      r.feature.name,
+      r.feature.track || '',
+      r.feature.team || '',
+      r.feature.stage || '',
+      ...r.gateStatuses.map(s => s.state),
+    ].map(csvEscape);
+    lines.push(values.join(','));
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'governance-matrix.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(value) {
+  const s = String(value ?? '');
+  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+
+
+function renderBoard(features) {
+  const board = document.getElementById('board');
+
+  if (features.length === 0) {
+    board.innerHTML = `
+      <div class="empty-state">
+        <h2>${allData && allData.features.length > 0 ? 'No features match your filters' : 'Pipeline is empty'}</h2>
+        <p>${allData && allData.features.length > 0
+          ? 'Try clearing your filters to see all features.'
+          : 'Run <code>/workflow</code> to begin, or add features to <code>pipeline-state.json</code>.'}</p>
+      </div>`;
+    return;
+  }
+
+  // Build a numeric index for each stage so we can determine past vs current.
+  const stageIdx = {};
+  STAGES.forEach((s, i) => { stageIdx[s.id] = i; });
+
+  const coreStages = ['ideation','discovery','benefit-metric','definition','spike','review','test-plan',
+    'definition-of-ready','branch-setup','implementation-plan','subagent-execution','implementation-review','verify-completion','branch-complete',
+    'definition-of-done','release-pending','released'];
+  const stagesToShow = STAGES.filter(s =>
+    coreStages.includes(s.id) || features.some(f => boardStageId(f.stage) === s.id));
+
+  if (pipelineLayout === 'loop-grouped') {
+    board.classList.add('loop-grouped');
+    const outerStages = stagesToShow.filter(s => loopType(s.id) === 'outer');
+    const innerStages = stagesToShow.filter(s => loopType(s.id) === 'inner');
+    const outerCards = features.filter(f => loopType(boardStageId(f.stage)) === 'outer').length;
+    const innerCards = features.filter(f => loopType(boardStageId(f.stage)) === 'inner').length;
+    // Gate banner: features at DoR signed-off but not yet in inner loop
+    const waitingForInner = features.filter(f => {
+      const allS = (f.epics||[]).flatMap(e => e.stories||[]);
+      return loopType(boardStageId(f.stage)) === 'outer' &&
+             allS.length > 0 && allS.every(s => s.dorStatus === 'signed-off');
+    });
+    const gateBanner = waitingForInner.length > 0
+      ? `<div class="loop-gate-banner">⬇ ${waitingForInner.length} feature${waitingForInner.length!==1?'s':''} ready to enter inner loop: ${waitingForInner.map(f=>esc(f.name)).join(', ')} — run <code>/branch-setup</code></div>`
+      : '';
+    board.innerHTML = `
+      ${loopLaneHTML('outer', 'Outer loop', outerCards, outerStages, features, stageIdx)}
+      ${gateBanner}
+      ${loopLaneHTML('inner', 'Inner loop', innerCards, innerStages, features, stageIdx)}`;
+    return;
+  }
+
+  board.classList.remove('loop-grouped');
+
+  board.innerHTML = stagesToShow.map(s => {
+    return renderStageColumn(s, features, stageIdx);
+  }).join('');
+}
+
+function loopLaneHTML(kind, title, cardCount, stages, features, stageIdx) {
+  const purpose = kind === 'outer'
+    ? 'Discover · Define · Release · Learn'
+    : 'Branch · Build · Verify · Complete';
+  const activeFeatures = features.filter(f => {
+    const t = loopType(boardStageId(f.stage));
+    return kind === 'inner' ? t === 'inner' : t === 'outer';
+  });
+  const hasRed   = activeFeatures.some(f => f.health === 'red');
+  const hasAmber = !hasRed && activeFeatures.some(f => f.health === 'amber');
+  const healthDot = hasRed ? '<span class="dot red" style="margin-right:4px"></span>'
+                 : hasAmber ? '<span class="dot amber" style="margin-right:4px"></span>'
+                 : cardCount > 0 ? '<span class="dot green" style="margin-right:4px"></span>' : '';
+  // Filter out empty stages in loop-grouped view
+  const visibleStages = stages.filter(s => {
+    const active = features.filter(f => boardStageId(f.stage) === s.id);
+    const done   = features.filter(f => (stageIdx[boardStageId(f.stage)] ?? 999) > (stageIdx[s.id] ?? 999));
+    return active.length > 0 || done.length > 0;
+  });
+  if (visibleStages.length === 0) return '';
+  return `
+    <section class="loop-lane">
+      <div class="loop-lane-header">
+        <div style="display:flex;align-items:center;gap:6px">
+          ${healthDot}<span class="loop-lane-title ${kind}">${title}</span>
+          <span class="loop-lane-purpose">${purpose}</span>
+        </div>
+        <span class="loop-lane-meta">${cardCount} active · ${visibleStages.length} stage${visibleStages.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="loop-lane-row">
+        ${visibleStages.map(s => renderStageColumn(s, features, stageIdx)).join('')}
+      </div>
+    </section>`;
+}
+
+function renderStageColumn(s, features, stageIdx) {
+    const sIdx   = stageIdx[s.id] ?? 999;
+    // Active: feature is currently AT this stage
+    const active = features.filter(f => boardStageId(f.stage) === s.id);
+    // Done:   feature has already passed THROUGH this stage
+    const done   = features.filter(f => (stageIdx[boardStageId(f.stage)] ?? 999) > sIdx);
+    const colWidth = resolveColumnWidth(s.id, active.length, done.length);
+    const isEmptyCol = active.length === 0 && done.length === 0;
+
+    const hasRed   = active.some(f => f.health === 'red');
+    const hasAmber = active.some(f => f.health === 'amber');
+    const loopCls = loopType(s.id) === 'inner' ? ' col-loop-inner' : ' col-loop-outer';
+    const colCls   = active.length > 0
+      ? 'col col-active' + loopCls + (hasRed ? ' has-red' : hasAmber ? ' has-amber' : '')
+      : 'col' + loopCls;
+    const isDoneOpen = openDoneSections.has(s.id);
+
+    return `
+    <div class="${colCls}${isEmptyCol ? ' col-empty' : ''}" data-stage="${s.id}" style="width:${colWidth}px">
+      <div class="col-header">
+        <div class="col-header-main">
+          <span class="col-header-title">${s.label}</span>
+        </div>
+        <div class="col-tools">
+          <button class="col-size-btn" data-action="narrow-col" data-stage="${s.id}" title="Narrow column">−</button>
+          <button class="col-size-btn" data-action="widen-col" data-stage="${s.id}" title="Widen column">+</button>
+          ${active.length > 0 ? `<span class="col-count">${active.length}</span>` : ''}
+          ${done.length  > 0 ? `<span class="col-count-done">${done.length}✓</span>` : ''}
+        </div>
+      </div>
+      <div class="col-body">
+        ${active.map(f => featureCardHTML(f)).join('')}
+        ${active.length === 0 && done.length === 0 ? '<div style="color:var(--border);font-size:11px;padding:4px 0">—</div>' : ''}
+        ${done.length > 0 ? `
+          <button class="done-section-toggle" data-action="toggle-done-section" data-stage="${s.id}">
+            ${isDoneOpen ? '▾' : '▸'} ${done.length} completed
+          </button>
+          <div class="done-cards ${isDoneOpen ? 'open' : ''}">
+            ${done.map(f => featureCardDoneHTML(f, s.id)).join('')}
+          </div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FEATURE CARD
+// ─────────────────────────────────────────────────────────────────────────────
+function featureCardHTML(f) {
+  const isOpen = openFeatures.has(f.slug);
+  const epics  = f.epics || [];
+  const allStories = epics.flatMap(e => e.stories || []);
+  const action = featureActionMeta(f);
+  const teamTag = f.team ? `<span class="tag">${esc(f.team)}</span>` : '';
+  const blocker = f.blocker && f.health === 'red'
+    ? `<div class="blocker-notice">🚫 ${esc(f.blocker)}</div>` : '';
+  const stageArts = (STAGE_ARTEFACTS[f.stage] || (() => []))(f);
+
+  return `
+  <div class="feature-card health-${f.health}" data-slug="${f.slug}">
+    <div class="card-header" data-action="toggle-feature" data-slug="${f.slug}">
+      <span class="card-toggle ${isOpen ? 'open' : ''}">▶</span>
+      <span class="card-title">${esc(f.name)}</span>
+      <span class="card-state-chip ${action.state}">${esc(action.label)}</span>
+      <span class="card-track ${f.track}">${trackLabel(f.track)}</span>
+    </div>
+    <div class="card-body ${isOpen ? 'open' : ''}">
+      ${blocker}
+      <div class="next-action ${action.state}">
+        <div class="next-action-row">
+          <div><span class="label">Next</span>${esc(action.nextAction)}</div>
+          <span class="next-action-age">${formatAge(featureAgeMinutes(f))}</span>
+        </div>
+      </div>
+      ${stageArts.length > 0 ? `<div class="card-artefacts"><span class="label">Docs</span>${stageArts.map(a => `<a class="drawer-link" href="${esc(a.path)}">${esc(a.label)}</a>`).join('')}</div>` : ''}
+      <div class="meta">
+        ${loopStageBadge(f.stage)}
+        ${metaStageBadge(f.stage)}
+        ${teamTag}
+        <span class="tag ${f.health}">${healthEmoji(f.health)} ${f.health}</span>
+        <span class="tag">${allStories.length} stor.</span>
+        ${allStories.filter(s => s.releaseReady).length > 0
+          ? `<span class="tag" style="color:var(--teal)">✓ ${allStories.filter(s=>s.releaseReady).length} rel-ready</span>` : ''}
+        ${loopScoreBadgeHTML(f)}
+        ${featureAgeMinutes(f) >= 60*24 ? `<span class="tag" style="color:var(--muted)" title="Time at current stage">\u23f1 ${formatAge(featureAgeMinutes(f))}</span>` : ''}
+      </div>
+      ${epics.length > 0 ? `<div class="epic-list">${epics.map(e => epicRowHTML(f.slug, e)).join('')}</div>` : '<div style="font-size:11px;color:var(--muted)">No epics yet</div>'}
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPLETED-STAGE TRAIL
+// ─────────────────────────────────────────────────────────────────────────────
+const STAGE_ARTEFACTS = {
+  'loop-design':          f => [{ label: '🧭 Loop design', path: `../artefacts/${f.slug}/loop-design.md` }],
+  'token-optimization':   f => [{ label: '💸 Token optimization', path: `../artefacts/${f.slug}/token-optimization.md` }],
+  'org-mapping':          f => [{ label: '🗺 Org mapping', path: `../artefacts/${f.slug}/org-mapping.md` }],
+  'scale-pipeline':       f => [{ label: '📈 Scale pipeline', path: `../artefacts/${f.slug}/scale-pipeline.md` }],
+  'discovery':           f => [{ label: '📄 Discovery',     path: `../artefacts/${f.slug}/discovery.md` }],
+  'benefit-metric':      f => [{ label: '📊 Benefit metric', path: `../artefacts/${f.slug}/benefit-metric.md` }],
+  'definition':          f => [
+    { label: '📋 Decisions', path: `../artefacts/${f.slug}/decisions.md` },
+    ...(f.epics||[]).map(e => ({ label: `📦 ${e.name||e.slug}`, path: `../artefacts/${f.slug}/epics/${e.slug}.md` })),
+  ],
+  'review':              f => {
+    const perStory = (f.epics||[]).flatMap(e => (e.stories||[]).map(s =>
+      ({ label: `🔍 ${s.name||s.title||s.slug}`, path: `../artefacts/${f.slug}/review/${s.slug}-review-1.md` })));
+    const combined = { label: `🔍 All stories review`, path: `../artefacts/${f.slug}/review/all-stories-review-1.md` };
+    return perStory.length > 0 ? [...perStory, combined] : [combined];
+  },
+  'test-plan':           f => (f.epics||[]).flatMap(e => (e.stories||[]).map(s =>
+    ({ label: `🧪 ${s.name||s.title||s.slug}`, path: `../artefacts/${f.slug}/test-plans/${s.slug}-test-plan.md` }))),
+  'definition-of-ready': f => (f.epics||[]).flatMap(e => (e.stories||[]).map(s =>
+    ({ label: `✅ ${s.name||s.title||s.slug}`, path: `../artefacts/${f.slug}/dor/${s.slug}-dor.md` }))),
+  'implementation-plan': f => (f.epics||[]).flatMap(e => (e.stories||[]).map(s =>
+    ({ label: `🗒 ${s.name||s.title||s.slug}`, path: `../artefacts/${f.slug}/plans/${s.slug}-plan.md` }))),
+  'verify-completion':   f => (f.epics||[]).flatMap(e => (e.stories||[]).map(s =>
+    ({ label: `✔ ${s.name||s.title||s.slug}`, path: `../artefacts/${f.slug}/verification-scripts/${s.slug}-verification.md` }))),
+  'definition-of-done':  f => (f.epics||[]).flatMap(e => (e.stories||[]).map(s =>
+    ({ label: `🏁 ${s.name||s.title||s.slug}`, path: `../artefacts/${f.slug}/dod/${s.slug}-dod.md` }))),
+  'trace':               f => [{ label: '🔗 Trace report', path: `../artefacts/${f.slug}/trace/trace.md` }],
+};
+
+function featureCardDoneHTML(f, stageId) {
+  const doneKey   = `done::${f.slug}::${stageId}`;
+  const isOpen    = openFeatures.has(doneKey);
+  const artefacts = (STAGE_ARTEFACTS[stageId] || (() => []))(f);
+  return `
+  <div class="feature-card done-card" data-slug="${f.slug}">
+    <div class="card-header" data-action="toggle-done" data-done-key="${doneKey}">
+      <span class="card-toggle ${isOpen ? 'open' : ''}">▶</span>
+      <span class="card-title">${esc(f.name)}</span>
+      <span style="font-size:10px;color:var(--green);flex-shrink:0;opacity:.7">✓</span>
+    </div>
+    ${isOpen ? `
+    <div class="card-body open">
+      ${artefacts.length > 0
+        ? `<div style="display:flex;flex-direction:column;gap:4px">${artefacts.map(a => `<a class="drawer-link" href="${esc(a.path)}">${esc(a.label)}</a>`).join('')}</div>`
+        : '<div style="font-size:11px;color:var(--muted)">No artefacts for this stage</div>'}
+    </div>` : ''}
+  </div>`;
+}
+
+function epicRowHTML(featureSlug, epic) {
+  const key    = `${featureSlug}::${epic.slug}`;
+  const isOpen = openEpics.has(key);
+  const stories = epic.stories || [];
+  return `
+  <div class="epic-row" data-epic-key="${key}">
+    <div class="epic-row-header" data-action="toggle-epic" data-key="${key}">
+      <span class="epic-toggle ${isOpen ? 'open' : ''}">▶</span>
+      <span class="epic-status-dot status-${epic.status}"></span>
+      <span class="epic-name">${esc(epic.name || epic.slug)}</span>
+      <span style="font-size:10px;color:var(--muted)">${stories.length}</span>
+    </div>
+    <div class="story-list ${isOpen ? 'open' : ''}">
+      ${stories.length > 0 ? stories.map(s => storyRowHTML(featureSlug, epic.slug, s)).join('') : '<div style="font-size:11px;color:var(--muted);padding:2px 0">No stories</div>'}
+    </div>
+  </div>`;
+}
+
+function storyRowHTML(featureSlug, epicSlug, story) {
+  const key    = `${featureSlug}::${epicSlug}::${story.slug}`;
+  const isOpen = openStories.has(key);
+  const acPct  = story.acTotal > 0 ? Math.round((story.acVerified / story.acTotal) * 100) : null;
+  const testPct = story.testPlan && story.testPlan.totalTests > 0
+    ? Math.round((story.testPlan.passing / story.testPlan.totalTests) * 100) : null;
+
+  const pills = [
+    story.reviewStatus === 'passed'       ? `<span class="pill ok">Review ✓</span>` :
+    story.reviewStatus === 'has-findings' ? `<span class="pill ${story.highFindings > 0 ? 'fail' : 'warn'}">${story.highFindings || 0} HIGH</span>` :
+                                            `<span class="pill none">Review —</span>`,
+
+    story.dorStatus === 'signed-off'  ? `<span class="pill ok">DoR ✓</span>` :
+    story.dorStatus === 'blocked'     ? `<span class="pill fail">DoR ✗</span>` :
+                                        `<span class="pill none">DoR —</span>`,
+
+    story.prStatus === 'merged'  ? `<span class="pill ok">PR merged</span>` :
+    story.prStatus === 'open'    ? `<span class="pill warn">PR open</span>` :
+    story.prStatus === 'draft'   ? `<span class="pill none">PR draft</span>` : '',
+
+    story.dodStatus === 'complete' ? `<span class="pill ok">DoD ✓</span>` : '',
+    story.releaseReady             ? `<span class="pill ok" style="color:var(--teal);border-color:rgba(20,184,166,.4)">Release ready</span>` : '',
+  ].filter(Boolean).join('');
+
+  return `
+  <div class="story-row" data-story-key="${key}">
+    <div class="story-row-top" data-action="open-story" data-story-key="${key}">
+      <div class="story-health" style="background:${healthColour(story.health)}"></div>
+      <span class="story-name">${esc(story.name||story.title||story.slug)}</span>
+      <span class="story-stage-badge">${stageLabel(story.stage)}</span>
+    </div>
+    ${taskListInlineHTML(story, key)}
+  </div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STORY DRAWER
+// ─────────────────────────────────────────────────────────────────────────────
+function openDrawer(featureSlug, epicSlug, storySlug) {
+  const feature = allData.features.find(f => f.slug === featureSlug);
+  if (!feature) return;
+  const epic  = (feature.epics || []).find(e => e.slug === epicSlug);
+  const story = epic ? (epic.stories || []).find(s => s.slug === storySlug) : null;
+  if (!story) return;
+
+  const acPct   = story.acTotal > 0 ? Math.round((story.acVerified / story.acTotal) * 100) : null;
+  const testPct = story.testPlan && story.testPlan.totalTests > 0
+    ? Math.round((story.testPlan.passing / story.testPlan.totalTests) * 100) : null;
+
+  const featureSlugPath = featureSlug;
+  const storyPath = `../artefacts/${featureSlugPath}/stories/${storySlug}.md`;
+  const testPath  = `../artefacts/${featureSlugPath}/test-plans/${storySlug}-test-plan.md`;
+  const dorPath   = `../artefacts/${featureSlugPath}/dor/${storySlug}-dor.md`;
+
+  const storyStage  = story.stage  || feature.stage;
+  const storyHealth = story.health || 'green';
+  const nextSkill   = storyNextSkill(story);
+
+  document.getElementById('drawer-content').innerHTML = `
+    <h2>${esc(story.name || story.title || story.slug)}</h2>
+    <div class="drawer-stage">Stage: <strong>${stageLabel(storyStage)}</strong> &nbsp;·&nbsp; Health: <strong style="color:${healthColour(storyHealth)}">${healthEmoji(storyHealth)} ${storyHealth}</strong></div>
+    ${nextSkill ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">▶ Next: <span style="color:var(--teal);font-family:monospace">${esc(nextSkill)}</span></div>` : '<div style="font-size:11px;color:var(--green);margin-top:4px">✓ Complete</div>'}
+
+    ${storyHealth === 'red' && story.blocker ? `<div class="drawer-blocker">🚫 ${esc(story.blocker)}</div>` : ''}
+
+    <div class="drawer-section">
+      <h3>Progress</h3>
+      ${acPct !== null ? `
+      <div style="margin-bottom:8px">
+        <div class="progress-label"><span>ACs verified</span><span>${story.acVerified}/${story.acTotal} (${acPct}%)</span></div>
+        <div class="progress-bar" style="height:6px"><div class="progress-fill ${acPct<100?'partial':''}" style="width:${acPct}%"></div></div>
+      </div>` : ''}
+      ${testPct !== null ? `
+      <div style="margin-bottom:8px">
+        <div class="progress-label"><span>Tests passing</span><span>${story.testPlan.passing}/${story.testPlan.totalTests} (${testPct}%)</span></div>
+        <div class="progress-bar" style="height:6px"><div class="progress-fill ${testPct<100?'partial':''}" style="width:${testPct}%"></div></div>
+      </div>` : '<div style="font-size:11px;color:var(--muted)">No test plan yet</div>'}
+    </div>
+
+    ${story.tasks && story.tasks.length > 0 ? `
+    <div class="drawer-section">
+      <h3>TDD Tasks</h3>
+      ${drawerTaskListHTML(story)}
+    </div>` : ''}
+
+    <div class="drawer-section">
+      <h3>Gates</h3>
+      <div class="drawer-row"><span class="label">Review</span><span>${reviewBadge(story)}</span></div>
+      <div class="drawer-row"><span class="label">Def of Ready</span><span>${dorBadge(story)}</span></div>
+      <div class="drawer-row"><span class="label">PR</span><span>${prBadge(story)}</span></div>
+      <div class="drawer-row"><span class="label">Def of Done</span><span>${dodBadge(story)}</span></div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Artefacts</h3>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        <a class="drawer-link" href="${storyPath}">📄 Story artefact</a>
+        ${story.reviewStatus ? `<a class="drawer-link" href="../artefacts/${featureSlugPath}/review/${storySlug}-review-1.md">🔍 Review</a>` : ''}
+        <a class="drawer-link" href="${testPath}">🧪 Test plan</a>
+        <a class="drawer-link" href="${dorPath}">✅ Definition of Ready</a>
+        ${['implementation-plan','coding','verify-completion','definition-of-done'].includes(storyStage) ? `<a class="drawer-link" href="../artefacts/${featureSlugPath}/plans/${storySlug}-plan.md">🗒 Implementation plan</a>` : ''}
+        ${story.prUrl ? `<a class="drawer-link" href="${story.prUrl}" target="_blank">🔗 Pull request</a>` : ''}
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <h3>Context</h3>
+      <div class="drawer-row"><span class="label">Feature</span><span>${esc(feature.name)}</span></div>
+      <div class="drawer-row"><span class="label">Epic</span><span>${esc(epic.name || epic.slug)}</span></div>
+      <div class="drawer-row"><span class="label">Track</span><span>${trackLabel(feature.track)}</span></div>
+      ${feature.team ? `<div class="drawer-row"><span class="label">Team</span><span>${esc(feature.team)}</span></div>` : ''}
+      ${story.complexity ? `<div class="drawer-row"><span class="label">Complexity</span><span>${esc(String(story.complexity))}</span></div>` : ''}
+      ${story.dorOversight ? `<div class="drawer-row"><span class="label">Oversight</span><span>${esc(story.dorOversight)}</span></div>` : ''}
+    </div>
+  `;
+
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARKDOWN VIEWER
+// ─────────────────────────────────────────────────────────────────────────────
+function draftStorageKey(path)    { return `pipeline-viz:draft:${path}`; }
+function loadDraft(path)          { try { return localStorage.getItem(draftStorageKey(path)); } catch (_) { return null; } }
+function saveDraft(path, text)    { try { localStorage.setItem(draftStorageKey(path), text); return true; } catch (_) { return false; } }
+function clearDraft(path)         { try { localStorage.removeItem(draftStorageKey(path)); return true; } catch (_) { return false; } }
+
+function simpleHash(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h.toString(16);
+}
+function draftMetaKey(path)                     { return `pipeline-viz:draft-meta:${path}`; }
+function saveDraftMeta(path, originalText)       { try { localStorage.setItem(draftMetaKey(path), simpleHash(originalText)); } catch (_) {} }
+function loadDraftBaseHash(path)                 { try { return localStorage.getItem(draftMetaKey(path)); } catch (_) { return null; } }
+function clearDraftMeta(path)                    { try { localStorage.removeItem(draftMetaKey(path)); } catch (_) {} }
+
+function computeLineDiff(oldText, newText) {
+  const a = oldText.split('\n'), b = newText.split('\n');
+  const m = a.length, n = b.length;
+  if (m * n > 250000) return [{ type: 'info', line: `(diff too large — ${m} vs ${n} lines)` }];
+  const dp = Array.from({ length: m + 1 }, () => new Uint32Array(n + 1));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  const result = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i-1] === b[j-1])            { result.unshift({ type: 'eq',  line: a[i-1] }); i--; j--; }
+    else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) { result.unshift({ type: 'add', line: b[j-1] }); j--; }
+    else                                                  { result.unshift({ type: 'del', line: a[i-1] }); i--; }
+  }
+  return result;
+}
+
+function renderDiffBody() {
+  const el = document.getElementById('md-diff');
+  if (!el) return;
+  if (mdDraftText === mdOriginalText) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:12px 0;text-align:center">No changes — draft matches source.</div>';
+    return;
+  }
+  const diff = computeLineDiff(mdOriginalText, mdDraftText);
+  const CONTEXT = 3;
+  const shown = new Set();
+  diff.forEach((d, idx) => {
+    if (d.type !== 'eq') for (let k = Math.max(0, idx - CONTEXT); k <= Math.min(diff.length - 1, idx + CONTEXT); k++) shown.add(k);
+  });
+  if (shown.size === 0) diff.forEach((_, idx) => shown.add(idx));
+  const adds = diff.filter(d => d.type === 'add').length;
+  const dels = diff.filter(d => d.type === 'del').length;
+  let html = `<div class="diff-hdr">--- a/${esc(mdCurrentPath)}<br>+++ b/${esc(mdCurrentPath)} (draft) &nbsp;<span style="color:var(--green)">+${adds}</span> <span style="color:var(--red)">-${dels}</span></div>`;
+  let oldNo = 0, newNo = 0, prevShown = -2;
+  diff.forEach((d, idx) => {
+    if (d.type !== 'add') oldNo++;
+    if (d.type !== 'del') newNo++;
+    if (!shown.has(idx)) { prevShown = idx; return; }
+    if (idx > prevShown + 1 && prevShown >= 0) {
+      const skipped = idx - prevShown - 1;
+      if (skipped > 0) html += `<div class="diff-skip">⋯ ${skipped} unchanged line${skipped > 1 ? 's' : ''}</div>`;
+    }
+    prevShown = idx;
+    const cls = d.type === 'add' ? 'diff-add' : d.type === 'del' ? 'diff-del' : 'diff-eq';
+    const sig = d.type === 'add' ? '+' : d.type === 'del' ? '-' : d.type === 'info' ? '~' : ' ';
+    const ol  = d.type === 'add' ? '' : String(oldNo);
+    const nl  = d.type === 'del' ? '' : String(newNo);
+    html += `<div class="diff-line ${cls}"><span class="diff-sign">${sig}</span><span class="diff-linenum">${esc(ol)}</span><span class="diff-linenum">${esc(nl)}</span><span>${esc(d.line)}</span></div>`;
+  });
+  el.innerHTML = html;
+}
+
+function generateUnifiedPatch() {
+  if (mdDraftText === mdOriginalText) return '';
+  const diff = computeLineDiff(mdOriginalText, mdDraftText);
+  const CONTEXT = 3;
+  const shown = new Set();
+  diff.forEach((d, idx) => {
+    if (d.type !== 'eq') for (let k = Math.max(0, idx - CONTEXT); k <= Math.min(diff.length - 1, idx + CONTEXT); k++) shown.add(k);
+  });
+  const sorted = [...shown].sort((a, b) => a - b);
+  const hunks = [];
+  let hunk = null;
+  for (const idx of sorted) {
+    if (!hunk || idx > hunk.end + 1) { if (hunk) hunks.push(hunk); hunk = { start: idx, end: idx, items: [] }; }
+    hunk.end = idx; hunk.items.push({ idx, ...diff[idx] });
+  }
+  if (hunk) hunks.push(hunk);
+  let patch = `--- a/${mdCurrentPath}\n+++ b/${mdCurrentPath} (draft)\n`;
+  for (const h of hunks) {
+    let oldStart = 0, newStart = 0;
+    for (let k = 0; k < h.start; k++) { if (diff[k].type !== 'add') oldStart++; if (diff[k].type !== 'del') newStart++; }
+    let oldCount = 0, newCount = 0;
+    h.items.forEach(it => { if (it.type !== 'add') oldCount++; if (it.type !== 'del') newCount++; });
+    patch += `@@ -${oldStart + 1},${oldCount} +${newStart + 1},${newCount} @@\n`;
+    h.items.forEach(it => { patch += `${it.type === 'add' ? '+' : it.type === 'del' ? '-' : ' '}${it.line}\n`; });
+  }
+  return patch;
+}
+
+function showConflictBanner() {
+  const el = document.getElementById('md-conflict');
+  if (!el) return;
+  el.className = 'visible';
+  el.innerHTML = `<span>⚠ Source changed since draft was saved — your draft may conflict with the current version.</span>
+    <button id="md-conflict-keep">Keep draft</button>
+    <button id="md-conflict-use-current">Use current file</button>
+    <button id="md-conflict-dismiss">Dismiss ✕</button>`;
+}
+
+function hideConflictBanner() {
+  const el = document.getElementById('md-conflict');
+  if (el) { el.className = ''; el.innerHTML = ''; }
+}
+
+// ───────────────────────────────────────────────────────────────
+// DRAFT LIST
+// ───────────────────────────────────────────────────────────────
+function getAllDrafts() {
+  const drafts = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('pipeline-viz:draft:')) continue;
+      const path = key.slice('pipeline-viz:draft:'.length);
+      drafts.push({ path, type: detectArtefactType(path) });
+    }
+  } catch (_) {}
+  return drafts.sort((a, b) => a.path.localeCompare(b.path));
+}
+
+function updateDraftBadge() {
+  const badge = document.getElementById('draft-badge');
+  if (!badge) return;
+  const count = getAllDrafts().length;
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+}
+
+function openDraftList() {
+  const drafts = getAllDrafts();
+  const body = document.getElementById('draft-list-body');
+  if (!body) return;
+  if (drafts.length === 0) {
+    body.innerHTML = '<div class="draft-empty">No saved drafts.</div>';
+  } else {
+    body.innerHTML = drafts.map(d => `
+      <div class="draft-item" data-path="${esc(d.path)}">
+        <div class="draft-item-info">
+          <div class="draft-item-path" data-action="open-draft" data-path="${esc(d.path)}">${esc(d.path)}</div>
+          <div class="draft-item-type">${esc(d.type)}</div>
+        </div>
+        <div class="draft-item-actions">
+          <button class="draft-item-open" data-action="open-draft" data-path="${esc(d.path)}">Open</button>
+          <button class="draft-item-discard" data-action="discard-draft" data-path="${esc(d.path)}">Discard</button>
+        </div>
+      </div>`).join('');
+  }
+  document.getElementById('draft-list-overlay').classList.add('open');
+  document.getElementById('draft-list-panel').classList.add('open');
+}
+
+function closeDraftList() {
+  document.getElementById('draft-list-overlay').classList.remove('open');
+  document.getElementById('draft-list-panel').classList.remove('open');
+}
+
+// ───────────────────────────────────────────────────────────────
+// VS CODE + COPILOT INTEGRATION
+// ───────────────────────────────────────────────────────────────
+function resolveVscodeUri(relativePath) {
+  // Attempt to build an absolute path for the vscode:// URI.
+  // We detect the base from location.href (Live Server / GitHub Pages serve from a known root).
+  // On file:// with no server the href itself gives the absolute path so we just navigate.
+  try {
+    const url = new URL(relativePath, location.href);
+    // On Live Server the origin is http://127.0.0.1:PORT, decode the path to absolute
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      // Heuristic: the user typically opens VS Code from the workspace root.
+      // We expose a manual override via mdVscodeBase; otherwise use the path as-is (relative to cwd)
+      const absPath = mdVscodeBase ? mdVscodeBase.replace(/[\\/]$/, '') + '/' + relativePath : decodeURIComponent(url.pathname);
+      return `vscode://file/${absPath.replace(/\\/g, '/')}`;
+    }
+    if (url.protocol === 'file:') return `vscode://file/${decodeURIComponent(url.pathname)}`;
+  } catch (_) {}
+  return null;
+}
+
+function buildCopilotPrompt() {
+  const patch = generateUnifiedPatch();
+  if (!patch) return `# No changes to apply\n\nThe draft matches the source file: ${mdCurrentPath}`;
+  return `# Apply draft edits to ${mdCurrentPath}\n\nI have made the following edits to \`${mdCurrentPath}\` using the pipeline visualizer.\nPlease apply the changes from this unified diff to the file.\n\n## Diff\n\n\`\`\`diff\n${patch}\`\`\`\n\n## Instructions\n- Apply the diff exactly as shown.\n- Preserve all existing formatting, whitespace, and markdown structure outside the changed lines.\n- Do not add, remove, or modify anything outside the diff.`;
+}
+
+function updateVscodeButtons() {
+  const openBtn    = document.getElementById('md-open-vscode');
+  const suggestBtn = document.getElementById('md-suggest-copilot');
+  if (!openBtn || !suggestBtn) return;
+  const hasPath    = !!mdCurrentPath;
+  const hasChanges = mdDraftText !== mdOriginalText;
+  openBtn.style.display    = hasPath ? '' : 'none';
+  suggestBtn.style.display = (hasPath && hasChanges) ? '' : 'none';
+}
+
+function detectArtefactType(path) {
+  if (/\/stories\/[^/]+\.md$/.test(path))   return 'story';
+  if (/\/benefit-metric\.md$/.test(path))    return 'benefit-metric';
+  if (/\/test-plans\/[^/]+\.md$/.test(path)) return 'test-plan';
+  if (/\/discovery\.md$/.test(path))         return 'discovery';
+  if (/\/dor\/[^/]+\.md$/.test(path))        return 'dor';
+  if (/\/review\/[^/]+\.md$/.test(path))     return 'review';
+  if (/\/dod\/[^/]+\.md$/.test(path))        return 'dod';
+  if (/SKILL\.md$/.test(path))               return 'skill';
+  return 'generic';
+}
+
+function validateArtefact(type, text) {
+  const v = [];
+  if (type === 'story') {
+    if (!/## Acceptance Criteria/i.test(text))
+      v.push({ level: 'error', msg: 'Acceptance Criteria section missing' });
+    const acMatches = [...text.matchAll(/\*\*AC\d+:\*\*/g)];
+    if (acMatches.length === 0)
+      v.push({ level: 'error', msg: 'No ACs found — minimum 3 required' });
+    else if (acMatches.length < 3)
+      v.push({ level: 'warn', msg: `Only ${acMatches.length} AC${acMatches.length > 1 ? 's' : ''} found — minimum 3 required` });
+    const acBodyRe = /\*\*AC(\d+):\*\*\s*([^\n]+)/g;
+    let m;
+    while ((m = acBodyRe.exec(text)) !== null) {
+      if (!/given.+when.+then/i.test(m[2]))
+        v.push({ level: 'warn', msg: `AC${m[1]} does not follow Given / When / Then format` });
+    }
+    if (!/## Out of Scope/i.test(text))
+      v.push({ level: 'warn', msg: 'Out of Scope section missing' });
+    if (!/## Benefit Linkage/i.test(text))
+      v.push({ level: 'warn', msg: 'Benefit Linkage section missing' });
+  } else if (type === 'benefit-metric') {
+    if (!/### Metric|## Tier 1/i.test(text))
+      v.push({ level: 'warn', msg: 'No Tier 1 metrics defined' });
+    if (/\|\s*\*\*Baseline\*\*\s*\|\s*\[/.test(text))
+      v.push({ level: 'warn', msg: 'Baseline is still a placeholder — fill in actual value' });
+    if (/\|\s*\*\*Target\*\*\s*\|\s*\[/.test(text))
+      v.push({ level: 'warn', msg: 'Target is still a placeholder — fill in actual value' });
+  } else if (type === 'test-plan') {
+    if (!/## AC Coverage/i.test(text))
+      v.push({ level: 'error', msg: 'AC Coverage section missing' });
+    if (!/## Test Data Strategy/i.test(text))
+      v.push({ level: 'warn', msg: 'Test Data Strategy section missing' });
+  } else if (type === 'dor') {
+    const checked   = (text.match(/- \[x\]/gi) || []).length;
+    const unchecked = (text.match(/- \[ \]/g)  || []).length;
+    const total = checked + unchecked;
+    if (total > 0 && unchecked > 0)   v.push({ level: 'warn', msg: `${checked}/${total} checklist items checked — ${unchecked} remaining` });
+    if (total > 0 && unchecked === 0) v.push({ level: 'ok',   msg: `All ${total} checklist items checked` });
+  }
+  return v;
+}
+
+function renderValidation() {
+  const el = document.getElementById('md-validation');
+  if (!el) return;
+  const findings = validateArtefact(mdArtefactType, mdDraftText);
+  if (findings.length === 0) { el.className = ''; el.innerHTML = ''; return; }
+  el.className = 'has-findings';
+  el.innerHTML = findings.map(f =>
+    `<div class="md-val-item md-val-${f.level}">${f.level === 'error' ? '✖' : f.level === 'ok' ? '✔' : '⚠'} ${esc(f.msg)}</div>`
+  ).join('');
+}
+
+function parseStoryACs(text) {
+  const acs = [];
+  const re = /\*\*(AC\d+):\*\*\s*([^\n]*(?:\n(?![*#\n])[^\n]*)*)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const id   = m[1];
+    const body = m[2].trim().replace(/\.$/, '');
+    const gwt  = body.match(/^Given\s+([\s\S]+?)[,;]\s*When\s+([\s\S]+?)[,;]\s*Then\s+([\s\S]+)$/i);
+    if (gwt) {
+      acs.push({ id, given: gwt[1].trim(), when: gwt[2].trim(), then: gwt[3].trim() });
+    } else {
+      acs.push({ id, given: '', when: '', then: '', raw: body });
+    }
+  }
+  return acs;
+}
+
+function renderFormBody() {
+  const formEl = document.getElementById('md-form');
+  if (!formEl) return;
+  if (mdArtefactType !== 'story') {
+    formEl.innerHTML = '<p class="form-unsupported">Structured form editing is not available for this artefact type.</p>';
+    return;
+  }
+  const acs = parseStoryACs(mdDraftText);
+  if (acs.length === 0) {
+    formEl.innerHTML = `<p class="form-unsupported">No <strong>AC</strong> entries found. Switch to Markdown tab to add them.</p>
+      <button id="md-form-add-ac">+ Add first AC</button>`;
+    return;
+  }
+  const cardsHtml = acs.map(ac => {
+    const isFree = ac.raw !== undefined && !ac.given && !ac.when && !ac.then;
+    if (isFree) {
+      return `<div class="ac-card" data-ac-id="${esc(ac.id)}">
+        <div class="ac-card-header"><span class="ac-id">${esc(ac.id)}</span><button class="ac-delete" data-id="${esc(ac.id)}" title="Remove">✕</button></div>
+        <div class="ac-field"><label class="ac-field-label">Text</label><textarea class="ac-input ac-freetext" rows="3">${esc(ac.raw)}</textarea></div>
+      </div>`;
+    }
+    return `<div class="ac-card" data-ac-id="${esc(ac.id)}">
+      <div class="ac-card-header"><span class="ac-id">${esc(ac.id)}</span><button class="ac-delete" data-id="${esc(ac.id)}" title="Remove">✕</button></div>
+      <div class="ac-field"><label class="ac-field-label">Given</label><textarea class="ac-input ac-given" rows="2">${esc(ac.given)}</textarea></div>
+      <div class="ac-field"><label class="ac-field-label">When</label><textarea class="ac-input ac-when" rows="2">${esc(ac.when)}</textarea></div>
+      <div class="ac-field"><label class="ac-field-label">Then</label><textarea class="ac-input ac-then" rows="2">${esc(ac.then)}</textarea></div>
+    </div>`;
+  }).join('');
+  formEl.innerHTML = cardsHtml + `<button id="md-form-add-ac">+ Add AC</button>`;
+}
+
+function applyFormChangesToDraft() {
+  const formEl = document.getElementById('md-form');
+  if (!formEl) return;
+  let newDraft = mdDraftText;
+  formEl.querySelectorAll('.ac-card').forEach(card => {
+    const id        = card.dataset.acId;
+    const escapedId = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const freeEl    = card.querySelector('.ac-freetext');
+    let newLine;
+    if (freeEl) {
+      newLine = `**${id}:** ${freeEl.value.trim()}`;
+    } else {
+      const given = (card.querySelector('.ac-given')?.value || '').trim();
+      const when_ = (card.querySelector('.ac-when')?.value  || '').trim();
+      const then_ = (card.querySelector('.ac-then')?.value  || '').trim();
+      newLine = `**${id}:** Given ${given}, When ${when_}, Then ${then_}.`;
+    }
+    const re = new RegExp(`\\*\\*${escapedId}:\\*\\*[^\\n]*(?:\\n(?![*#\\n])[^\\n]*)*`);
+    newDraft = newDraft.replace(re, newLine);
+  });
+  mdDraftText = newDraft;
+}
+
+function deleteAC(acId) {
+  const escapedId = acId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\n?\\*\\*${escapedId}:\\*\\*[^\\n]*(?:\\n(?![*#\\n])[^\\n]*)*`);
+  mdDraftText = mdDraftText.replace(re, '');
+  renderMdStatus();
+  renderMdBody();
+}
+
+function addNewAC() {
+  const acs     = parseStoryACs(mdDraftText);
+  const nextNum = acs.length > 0 ? Math.max(...acs.map(a => parseInt(a.id.replace('AC', ''), 10))) + 1 : 1;
+  const newLine = `\n\n**AC${nextNum}:** Given [context], When [action], Then [observable outcome].`;
+  if (mdDraftText.includes('<!-- Add more ACs')) {
+    mdDraftText = mdDraftText.replace('<!-- Add more ACs', newLine + '\n\n<!-- Add more ACs');
+  } else if (mdDraftText.includes('## Out of Scope')) {
+    mdDraftText = mdDraftText.replace('## Out of Scope', newLine + '\n\n## Out of Scope');
+  } else {
+    mdDraftText += newLine;
+  }
+  renderMdStatus();
+  renderMdBody();
+}
+
+function renderMdStatus() {
+  const statusEl = document.getElementById('md-status');
+  if (!statusEl) return;
+  if (!mdCurrentPath) { statusEl.textContent = ''; return; }
+  const hasDraft = loadDraft(mdCurrentPath) !== null;
+  const changed  = mdDraftText !== mdOriginalText;
+  if (hasDraft && changed) { statusEl.textContent = 'Draft changed'; statusEl.style.color = 'var(--amber)'; }
+  else if (hasDraft)       { statusEl.textContent = 'Draft saved';   statusEl.style.color = 'var(--green)'; }
+  else { statusEl.textContent = changed ? 'Unsaved' : 'Viewing source'; statusEl.style.color = changed ? 'var(--amber)' : 'var(--muted)'; }
+  // show diff tab only when there are changes
+  const diffTab = document.getElementById('md-tab-diff');
+  if (diffTab) diffTab.style.display = (changed && mdCurrentPath) ? '' : 'none';
+}
+
+function renderMdBody() {
+  const contentEl  = document.getElementById('md-content');
+  const editorEl   = document.getElementById('md-editor');
+  const formEl     = document.getElementById('md-form');
+  const diffEl     = document.getElementById('md-diff');
+  const previewBtn = document.getElementById('md-tab-preview');
+  const rawBtn     = document.getElementById('md-tab-raw');
+  const formBtn    = document.getElementById('md-tab-form');
+  const diffBtn    = document.getElementById('md-tab-diff');
+  const copyBtn    = document.getElementById('md-copy-patch');
+  if (!contentEl || !editorEl || !previewBtn || !rawBtn) return;
+  previewBtn.classList.toggle('active', mdMode === 'preview');
+  rawBtn.classList.toggle('active',     mdMode === 'raw');
+  if (formBtn) formBtn.classList.toggle('active',  mdMode === 'form');
+  if (diffBtn) diffBtn.classList.toggle('active',  mdMode === 'diff');
+  contentEl.classList.toggle('active',  mdMode === 'preview');
+  editorEl.classList.toggle('active',   mdMode === 'raw');
+  if (formEl) formEl.classList.toggle('active',  mdMode === 'form');
+  if (diffEl) diffEl.classList.toggle('active',  mdMode === 'diff');
+  if (copyBtn) copyBtn.style.display = mdMode === 'diff' ? '' : 'none';
+  const fmtBar = document.getElementById('md-format-bar');
+  if (fmtBar) fmtBar.classList.toggle('active', mdMode === 'raw');
+  editorEl.value = mdDraftText;
+  const html = typeof marked !== 'undefined'
+    ? marked.parse(mdDraftText || '')
+    : `<pre style="white-space:pre-wrap;font-size:12px;line-height:1.6">${esc(mdDraftText || '')}</pre>`;
+  contentEl.innerHTML = html + `<div style="margin-top:24px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted)">Click <strong style="color:var(--text)">\u270f\ufe0f Edit</strong> above to edit \u00b7 <strong style="color:var(--text)">Save draft</strong> saves locally \u00b7 <strong style="color:var(--text)">\ud83d\udce6 VS Code</strong> opens in editor to save to disk</div>`;
+  if (mdMode === 'form') renderFormBody();
+  if (mdMode === 'diff') renderDiffBody();
+  renderValidation();
+  renderMdStatus();
+  updateVscodeButtons();
+}
+
+async function openMdViewer(path) {
+  mdCurrentPath  = path;
+  mdMode         = 'preview';
+  mdArtefactType = detectArtefactType(path);
+  document.getElementById('md-title').textContent = path;
+  document.getElementById('md-content').innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px 0">Loading…</div>';
+  document.getElementById('md-editor').value = '';
+  const formTab = document.getElementById('md-tab-form');
+  if (formTab) formTab.style.display = mdArtefactType === 'story' ? '' : 'none';
+  document.getElementById('md-overlay').classList.add('open');
+  document.getElementById('md-pane').classList.add('open');
+  try {
+    const resp = await fetch(path + '?_=' + Date.now());
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} — file not found`);
+    const text = await resp.text();
+    mdOriginalText = text;
+    const existingDraft = loadDraft(path);
+    mdDraftText = existingDraft ?? text;
+    if (existingDraft !== null) {
+      const storedHash = loadDraftBaseHash(path);
+      if (storedHash && storedHash !== simpleHash(text)) showConflictBanner();
+    }
+    renderMdBody();
+  } catch (e) {
+    mdOriginalText = `<!-- Could not load source: ${e.message} -->`;
+    mdDraftText = loadDraft(path) ?? mdOriginalText;
+    renderMdBody();
+    document.getElementById('md-content').innerHTML +=
+      `<div style="color:var(--red);font-size:12px;margin-top:8px">Could not load source file: ${esc(e.message)}<br>Draft editing is still available locally.</div>`;
+  }
+}
+
+function closeMdViewer() {
+  document.getElementById('md-overlay').classList.remove('open');
+  document.getElementById('md-pane').classList.remove('open');
+  hideConflictBanner();
+  mdCurrentPath  = '';
+  mdOriginalText = '';
+  mdDraftText    = '';
+  mdArtefactType = 'generic';
+  mdMode = 'preview';
+  updateDraftBadge();
+}
+
+function closeDrawer() {
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENT BINDING
+// ─────────────────────────────────────────────────────────────────────────────
+function handleBoardClick(e) {
+    const toggleGovPolicy = e.target.closest('[data-action="toggle-gov-policy"]');
+    if (toggleGovPolicy) {
+      governanceStrictPolicy = !governanceStrictPolicy;
+      localStorage.setItem('gov-strict-policy', governanceStrictPolicy);
+      render();
+      return;
+    }
+    const filterGovGate = e.target.closest('[data-action="filter-gov-gate"]');
+    if (filterGovGate) {
+      const gate = filterGovGate.dataset.gate || '';
+      governanceGateFilter = governanceGateFilter === gate ? '' : gate;
+      render();
+      return;
+    }
+    const clearGovFilter = e.target.closest('[data-action="clear-gov-filter"]');
+    if (clearGovFilter) {
+      governanceGateFilter = '';
+      render();
+      return;
+    }
+    const exportGovCsv = e.target.closest('[data-action="export-gov-csv"]');
+    if (exportGovCsv) {
+      exportGovernanceCsv(filteredFeatures());
+      return;
+    }
+    const focusFeature = e.target.closest('[data-action="focus-feature"]');
+    if (focusFeature) {
+      focusFeatureBySlug(focusFeature.dataset.slug);
+      return;
+    }
+    const narrowCol = e.target.closest('[data-action="narrow-col"]');
+    if (narrowCol) {
+      resizeStageColumn(narrowCol.dataset.stage, -COL_STEP);
+      render();
+      return;
+    }
+    const widenCol = e.target.closest('[data-action="widen-col"]');
+    if (widenCol) {
+      resizeStageColumn(widenCol.dataset.stage, COL_STEP);
+      render();
+      return;
+    }
+    const featureToggle = e.target.closest('[data-action="toggle-feature"]');
+    if (featureToggle) {
+      const slug = featureToggle.dataset.slug;
+      openFeatures.has(slug) ? openFeatures.delete(slug) : openFeatures.add(slug);
+      render(); return;
+    }
+    const epicToggle = e.target.closest('[data-action="toggle-epic"]');
+    if (epicToggle) {
+      const key = epicToggle.dataset.key;
+      openEpics.has(key) ? openEpics.delete(key) : openEpics.add(key);
+      render(); return;
+    }
+    const taskToggle = e.target.closest('[data-action="toggle-tasks"]');
+    if (taskToggle) {
+      const key = taskToggle.dataset.taskKey;
+      openTaskLists.has(key) ? openTaskLists.delete(key) : openTaskLists.add(key);
+      render(); return;
+    }
+    const doneToggle = e.target.closest('[data-action="toggle-done"]');
+    if (doneToggle) {
+      const key = doneToggle.dataset.doneKey;
+      openFeatures.has(key) ? openFeatures.delete(key) : openFeatures.add(key);
+      render(); return;
+    }
+    const doneSectionToggle = e.target.closest('[data-action="toggle-done-section"]');
+    if (doneSectionToggle) {
+      const stage = doneSectionToggle.dataset.stage;
+      openDoneSections.has(stage) ? openDoneSections.delete(stage) : openDoneSections.add(stage);
+      render(); return;
+    }
+    const storyRow = e.target.closest('[data-action="open-story"]');
+    if (storyRow && !e.target.closest('[data-action="toggle-tasks"]')) {
+      const [fSlug, eSlug, sSlug] = storyRow.dataset.storyKey.split('::');
+      openDrawer(fSlug, eSlug, sSlug);
+    }
+}
+
+function bindCardEvents() {
+  document.getElementById('board').addEventListener('click', handleBoardClick);
+  document.getElementById('library-board').addEventListener('click', handleBoardClick);
+  document.getElementById('governance-board').addEventListener('click', handleBoardClick);
+  document.getElementById('action-queue').addEventListener('click', handleBoardClick);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FILTER CONTROLS
+// ─────────────────────────────────────────────────────────────────────────────
+function populateTeamFilter() {
+  if (!allData) return;
+  const sel = document.getElementById('filter-team');
+  const current = sel.value;
+  const teams = [...new Set(allData.features.map(f => f.team).filter(Boolean))].sort();
+  sel.innerHTML = `<option value="">All</option>` + teams.map(t => `<option value="${esc(t)}" ${t===current?'selected':''}>${esc(t)}</option>`).join('');
+}
+
+function initFilters() {
+  bindCardEvents(); // bind once — not on every render()
+  ['health','track','team','action'].forEach(k => {
+    document.getElementById(`filter-${k}`).addEventListener('change', e => {
+      activeFilters[k] = e.target.value; render();
+    });
+  });
+  document.getElementById('filter-search').addEventListener('input', e => {
+    activeFilters.search = e.target.value; render();
+  });
+  document.getElementById('expand-all-btn').addEventListener('click', () => {
+    if (!allData) return;
+    allData.features.forEach(f => {
+      openFeatures.add(f.slug);
+      (f.epics||[]).forEach(e => openEpics.add(`${f.slug}::${e.slug}`));
+    });
+    STAGES.forEach(s => openDoneSections.add(s.id));
+    render();
+  });
+  document.getElementById('collapse-all-btn').addEventListener('click', () => {
+    openFeatures.clear(); openEpics.clear(); openStories.clear(); openTaskLists.clear(); openDoneSections.clear(); render();
+  });
+  document.getElementById('toggle-loop-group-btn').addEventListener('click', () => {
+    pipelineLayout = pipelineLayout === 'loop-grouped' ? 'flat' : 'loop-grouped';
+    updatePipelineLayoutUi();
+    render();
+  });
+  document.getElementById('governance-btn').addEventListener('click', () => {
+    setViewMode(viewMode === 'governance' ? 'stage' : 'governance');
+  });
+  document.getElementById('outcomes-btn').addEventListener('click', () => {
+    setViewMode(viewMode === 'outcomes' ? 'stage' : 'outcomes');
+  });
+  document.getElementById('library-btn').addEventListener('click', () => {
+    setViewMode(viewMode === 'library' ? 'stage' : 'library');
+  });
+  document.getElementById('story-map-btn').addEventListener('click', () => {
+    setViewMode(viewMode === 'story-map' ? 'stage' : 'story-map');
+  });
+  document.addEventListener('change', e => {
+    if (e.target.id === 'story-map-strategy') {
+      storyMapState.strategy = e.target.value;
+      render();
+    }
+    if (e.target.id === 'story-map-compare') {
+      storyMapState.compare = !!e.target.checked;
+      render();
+    }
+    if (e.target.id === 'story-map-compare-strategy') {
+      storyMapState.compareStrategy = e.target.value;
+      render();
+    }
+  });
+  document.addEventListener('click', e => {
+    const storyBtn = e.target.closest('[data-action="story-map-open"]');
+    if (storyBtn) {
+      if (storyBtn.dataset.stub === '1') {
+        openStubStoryModal(storyBtn.dataset.title || '', storyBtn.dataset.story || '', storyBtn.dataset.personas || '', storyBtn.dataset.path || '');
+      } else {
+        openMdViewer(storyBtn.dataset.path || '');
+      }
+      return;
+    }
+    if (e.target.id === 'story-stub-overlay' || e.target.id === 'story-stub-close') {
+      closeStubStoryModal();
+    }
+  });
+  document.getElementById('column-width-slider').addEventListener('input', e => {
+    const width = clampColWidth(Number(e.target.value) || columnUi.globalWidth);
+    columnUi.globalWidth = width;
+    updateColumnWidthUi();
+    render();
+  });
+  document.getElementById('toggle-empty-shrink-btn').addEventListener('click', e => {
+    columnUi.autoShrinkEmpty = !columnUi.autoShrinkEmpty;
+    e.currentTarget.classList.toggle('active', columnUi.autoShrinkEmpty);
+    render();
+  });
+  document.getElementById('reset-col-width-btn').addEventListener('click', () => {
+    resetColumnSizing();
+    render();
+  });
+  document.getElementById('reload-btn').addEventListener('click', loadState);
+  document.getElementById('download-btn').addEventListener('click', downloadState);
+  document.getElementById('file-input').addEventListener('change', e => {
+    if (e.target.files[0]) readFile(e.target.files[0]);
+  });
+  document.getElementById('drawer-close').addEventListener('click', closeDrawer);
+  document.getElementById('drawer-overlay').addEventListener('click', closeDrawer);
+  document.getElementById('md-close').addEventListener('click', closeMdViewer);
+  document.getElementById('md-overlay').addEventListener('click', closeMdViewer);
+
+  // ── Format toolbar ────────────────────────────────────────────────────────
+  function applyFormat(fmt) {
+    const ta = document.getElementById('md-editor');
+    const start = ta.selectionStart, end = ta.selectionEnd;
+    const sel = ta.value.substring(start, end);
+    const before = ta.value.substring(0, start);
+    const after  = ta.value.substring(end);
+    let insert = '', newCursor = null;
+    const lineStart = before.lastIndexOf('\n') + 1;
+    const linePrefix = ta.value.substring(lineStart, start);
+    switch (fmt) {
+      case 'bold':      insert = `**${sel||'bold text'}**`;      newCursor = sel ? null : start + 2; break;
+      case 'italic':    insert = `*${sel||'italic text'}*`;      newCursor = sel ? null : start + 1; break;
+      case 'strike':    insert = `~~${sel||'text'}~~`;           newCursor = sel ? null : start + 2; break;
+      case 'h2':        insert = `\n## ${sel||'Heading'}\n`;     break;
+      case 'h3':        insert = `\n### ${sel||'Heading'}\n`;    break;
+      case 'ul':        insert = `\n- ${sel||'item'}\n`;         break;
+      case 'ol':        insert = `\n1. ${sel||'item'}\n`;        break;
+      case 'checkbox':  insert = `\n- [ ] ${sel||'task'}\n`;     break;
+      case 'code':      insert = `\`${sel||'code'}\``;           newCursor = sel ? null : start + 1; break;
+      case 'codeblock': insert = `\n\`\`\`\n${sel||'code'}\n\`\`\`\n`; break;
+      case 'link':      insert = `[${sel||'label'}](url)`;       break;
+      case 'hr':        insert = `\n---\n`;                      break;
+      default: return;
+    }
+    ta.value = before + insert + after;
+    mdDraftText = ta.value;
+    ta.selectionStart = ta.selectionEnd = sel ? start + insert.length : (newCursor ?? start + insert.length);
+    ta.focus();
+    renderMdStatus();
+    renderValidation();
+  }
+  document.getElementById('md-format-bar').addEventListener('click', e => {
+    const btn = e.target.closest('[data-fmt]');
+    if (btn) applyFormat(btn.dataset.fmt);
+  });
+
+  // Ctrl+B / Ctrl+I shortcuts in editor
+  document.getElementById('md-editor').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'b') { e.preventDefault(); applyFormat('bold'); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); applyFormat('italic'); }
+  });
+  document.getElementById('md-tab-preview').addEventListener('click', () => {
+    mdMode = 'preview';
+    renderMdBody();
+  });
+  document.getElementById('md-tab-raw').addEventListener('click', () => {
+    mdMode = 'raw';
+    renderMdBody();
+    document.getElementById('md-editor').focus();
+  });
+  document.getElementById('md-editor').addEventListener('input', e => {
+    mdDraftText = e.target.value;
+    renderMdStatus();
+    renderValidation();
+    updateVscodeButtons();
+  });
+  document.getElementById('md-save-draft').addEventListener('click', () => {
+    if (!mdCurrentPath) return;
+    if (!saveDraft(mdCurrentPath, mdDraftText)) {
+      const s = document.getElementById('md-status');
+      s.textContent = 'Save failed'; s.style.color = 'var(--red)';
+      return;
+    }
+    saveDraftMeta(mdCurrentPath, mdOriginalText);
+    updateDraftBadge();
+    renderMdStatus();
+  });
+  document.getElementById('md-reset-draft').addEventListener('click', () => {
+    if (!mdCurrentPath) return;
+    clearDraft(mdCurrentPath);
+    clearDraftMeta(mdCurrentPath);
+    hideConflictBanner();
+    mdDraftText = mdOriginalText;
+    if (mdMode === 'diff') mdMode = 'preview';
+    updateDraftBadge();
+    renderMdBody();
+  });
+  document.getElementById('md-open-vscode').addEventListener('click', () => {
+    if (!mdCurrentPath) return;
+    const uri = resolveVscodeUri(mdCurrentPath);
+    if (uri) { window.location.href = uri; }
+    else { prompt('Absolute path to open in VS Code (edit and paste into your terminal):', mdCurrentPath); }
+  });
+  document.getElementById('md-suggest-copilot').addEventListener('click', () => {
+    const prompt_text = buildCopilotPrompt();
+    navigator.clipboard.writeText(prompt_text).then(() => {
+      const btn = document.getElementById('md-suggest-copilot');
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1800);
+    }).catch(() => { prompt('Copy this Copilot prompt:', prompt_text); });
+  });
+  document.getElementById('md-drafts-btn').addEventListener('click', openDraftList);
+  document.getElementById('draft-list-close').addEventListener('click', closeDraftList);
+  document.getElementById('draft-list-overlay').addEventListener('click', closeDraftList);
+  document.getElementById('draft-list-body').addEventListener('click', e => {
+    const openBtn    = e.target.closest('[data-action="open-draft"]');
+    const discardBtn = e.target.closest('[data-action="discard-draft"]');
+    if (openBtn) {
+      const path = openBtn.dataset.path;
+      closeDraftList();
+      openMdViewer(path);
+      return;
+    }
+    if (discardBtn) {
+      const path = discardBtn.dataset.path;
+      clearDraft(path);
+      clearDraftMeta(path);
+      openDraftList(); // refresh
+      updateDraftBadge();
+    }
+  });
+  updateDraftBadge();
+  document.getElementById('md-tab-diff').addEventListener('click', () => {
+    mdMode = 'diff';
+    renderMdBody();
+  });
+  document.getElementById('md-copy-patch').addEventListener('click', () => {
+    const patch = generateUnifiedPatch();
+    if (!patch) return;
+    const btn = document.getElementById('md-copy-patch');
+    navigator.clipboard.writeText(patch).then(() => {
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    }).catch(() => { prompt('Copy this patch:', patch); });
+  });
+  document.getElementById('md-conflict').addEventListener('click', e => {
+    if (e.target.id === 'md-conflict-dismiss')     { hideConflictBanner(); return; }
+    if (e.target.id === 'md-conflict-keep')        { hideConflictBanner(); return; }
+    if (e.target.id === 'md-conflict-use-current') {
+      clearDraft(mdCurrentPath);
+      clearDraftMeta(mdCurrentPath);
+      mdDraftText = mdOriginalText;
+      hideConflictBanner();
+      if (mdMode === 'diff') mdMode = 'preview';
+      renderMdBody();
+    }
+  });
+  document.getElementById('md-tab-form').addEventListener('click', () => {
+    mdMode = 'form';
+    renderMdBody();
+  });
+  document.getElementById('md-form').addEventListener('input', e => {
+    if (e.target.classList.contains('ac-input')) {
+      applyFormChangesToDraft();
+      renderMdStatus();
+      renderValidation();
+      updateVscodeButtons();
+    }
+  });
+  document.getElementById('md-form').addEventListener('click', e => {
+    const deleteBtn = e.target.closest('.ac-delete');
+    if (deleteBtn) { deleteAC(deleteBtn.dataset.id); return; }
+    if (e.target.id === 'md-form-add-ac') { addNewAC(); }
+  });
+  // Outcomes board — metric edit/save/cancel
+  document.getElementById('outcomes-board').addEventListener('click', e => {
+    const editBtn = e.target.closest('[data-action="edit-metric"]');
+    if (editBtn) {
+      editingMetric = { featureSlug: editBtn.dataset.feature, metricId: editBtn.dataset.metric };
+      renderOutcomes(filteredFeatures()); return;
+    }
+    const saveBtn = e.target.closest('[data-action="save-metric"]');
+    if (saveBtn) {
+      const fSlug = saveBtn.dataset.feature;
+      const mId   = saveBtn.dataset.metric;
+      const signal   = document.getElementById(`edit-signal-${mId}`).value;
+      const evidence = document.getElementById(`edit-evidence-${mId}`).value.trim() || null;
+      const dateMeasured = document.getElementById(`edit-date-${mId}`).value || null;
+      const feat = allData.features.find(f => f.slug === fSlug);
+      if (feat && feat.metrics) {
+        const metric = feat.metrics.find(m => m.id === mId);
+        if (metric) {
+          metric.signal = signal;
+          metric.evidence = evidence;
+          metric.lastMeasured = dateMeasured;
+          isDirty = true;
+          document.getElementById('download-btn').classList.add('dirty');
+          document.getElementById('download-btn').title = 'Unsaved changes — click to download updated pipeline-state.json';
+        }
+      }
+      editingMetric = null;
+      render(); return;
+    }
+    const cancelBtn = e.target.closest('[data-action="cancel-edit"]');
+    if (cancelBtn) { editingMetric = null; renderOutcomes(filteredFeatures()); }
+  });
+  // Intercept .md links anywhere on the page (drawer AND done-card artefact lists)
+  document.addEventListener('click', e => {
+    const link = e.target.closest('a.drawer-link');
+    if (link && (link.getAttribute('href') || '').endsWith('.md')) {
+      e.preventDefault();
+      openMdViewer(link.getAttribute('href'));
+    }
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DOWNLOAD STATE
+// ─────────────────────────────────────────────────────────────────────────────
+function downloadState() {
+  if (!allData) return;
+  const updated = { ...allData, updated: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(updated, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'pipeline-state.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  isDirty = false;
+  document.getElementById('download-btn').classList.remove('dirty');
+  document.getElementById('download-btn').title = 'Download current state as pipeline-state.json';
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  const viewerOpen = document.getElementById('md-overlay').classList.contains('open');
+  if (e.key === 'Escape') {
+    if (document.getElementById('draft-list-panel').classList.contains('open')) { closeDraftList(); return; }
+    if (viewerOpen) { closeMdViewer(); }
+    else { closeDrawer(); }
+    return;
+  }
+  // Viewer-scoped shortcuts (only fire when md-pane is open)
+  if (viewerOpen) {
+    if (e.key === 'd') { document.getElementById('md-tab-diff').click(); return; }
+    if (e.key === 's') { document.getElementById('md-save-draft').click(); return; }
+  }
+  if (e.key === 'e') { document.getElementById('expand-all-btn').click(); return; }
+  if (e.key === 'c') { document.getElementById('collapse-all-btn').click(); return; }
+  if (e.key === 'g') { document.getElementById('toggle-loop-group-btn').click(); return; }
+  if (e.key === 'v') { document.getElementById('governance-btn').click(); return; }
+  if (e.key === 'o') { document.getElementById('outcomes-btn').click(); return; }
+  if (e.key === 'l') { document.getElementById('library-btn').click(); return; }
+  if (e.key === 'm') { document.getElementById('story-map-btn').click(); return; }
+  if (e.key === '[') {
+    columnUi.globalWidth = clampColWidth(columnUi.globalWidth - COL_STEP);
+    updateColumnWidthUi();
+    render();
+    return;
+  }
+  if (e.key === ']') {
+    columnUi.globalWidth = clampColWidth(columnUi.globalWidth + COL_STEP);
+    updateColumnWidthUi();
+    render();
+    return;
+  }
+  if (e.key === '0') {
+    resetColumnSizing();
+    render();
+    return;
+  }
+  if (e.key === 'f') { document.getElementById('filter-search').focus(); e.preventDefault(); }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function healthColour(h) { return h==='red' ? 'var(--red)' : h==='amber' ? 'var(--amber)' : 'var(--green)'; }
+function healthEmoji(h)  { return h==='red' ? '🔴' : h==='amber' ? '🟡' : '🟢'; }
+function trackLabel(t) {
+  if (t === 'short') return 'Short';
+  if (t === 'standard') return 'Std';
+  if (t === 'programme-workstream') return 'Prog';
+  if (t === 'library') return 'Library';
+  return t ? t : 'Std';
+}
+
+function hasHighFindings(feature) {
+  const stories = allStories(feature);
+  return stories.some(s => (s.highFindings || 0) > 0);
+}
+
+function isReleaseReady(feature) {
+  const stories = allStories(feature);
+  return stories.length > 0 && stories.every(s => s.releaseReady || s.dodStatus === 'complete' || s.prStatus === 'merged');
+}
+
+function allStories(feature) {
+  return (feature.epics || []).flatMap(e => e.stories || []);
+}
+
+function featureTimestamp(feature) {
+  return feature.updatedAt || feature.updated || (allData ? allData.updated : null) || null;
+}
+
+function featureAgeMinutes(feature) {
+  const ts = featureTimestamp(feature);
+  if (!ts) return 0;
+  const then = new Date(ts).getTime();
+  if (!Number.isFinite(then)) return 0;
+  return Math.max(0, Math.floor((Date.now() - then) / 60000));
+}
+
+function formatAge(minutes) {
+  if (minutes < 60) return `${minutes}m`;
+  if (minutes < 1440) return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+  return `${Math.floor(minutes / 1440)}d ${Math.floor((minutes % 1440) / 60)}h`;
+}
+
+function getNextStage(stage) {
+  const order = [
+    'ideation', 'discovery', 'benefit-metric', 'definition', 'spike', 'review', 'test-plan',
+    'definition-of-ready', 'branch-setup', 'implementation-plan', 'subagent-execution',
+    'implementation-review', 'verify-completion', 'branch-complete', 'definition-of-done',
+    'trace', 'release-pending', 'released'
+  ];
+  const i = order.indexOf(stage);
+  return i >= 0 && i < order.length - 1 ? order[i + 1] : null;
+}
+
+function focusFeatureBySlug(slug) {
+  if (!slug || !allData || !allData.features) return;
+  const feature = allData.features.find(f => f.slug === slug);
+  if (!feature) return;
+  if (!openFeatures.has(slug)) openFeatures.add(slug);
+  render();
+  setTimeout(() => {
+    const el = document.querySelector(`.feature-card[data-slug="${slug}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+  }, 0);
+}
+
+function featureActionMeta(feature) {
+  if (feature.health === 'red' || feature.stage === 'stalled') {
+    return {
+      state: 'blocked',
+      label: 'Blocked',
+      nextAction: feature.blocker ? `Unblock: ${feature.blocker}` : 'Resolve blocker and update stage',
+    };
+  }
+
+  const stage = feature.stage;
+  if (stage === 'released') {
+    return { state: 'done', label: 'Done', nextAction: 'No action needed' };
+  }
+
+  if (stage === 'review' && hasHighFindings(feature)) {
+    return { state: 'human', label: 'Needs human', nextAction: 'Address HIGH findings and rerun /review' };
+  }
+
+  if (stage === 'release-pending' && isReleaseReady(feature)) {
+    return { state: 'human', label: 'Needs human', nextAction: 'Run /release and complete deployment checklist' };
+  }
+
+  const processingStageActions = {
+    'branch-setup': 'Branch/worktree setup in progress',
+    'implementation-plan': 'Implementation planning in progress',
+    'subagent-execution': 'Subagent task execution in progress',
+    'verify-completion': 'Verification checks running',
+  };
+  if (processingStageActions[stage]) {
+    const stale = featureAgeMinutes(feature) >= PROCESSING_STALE_MINUTES;
+    return {
+      state: 'processing',
+      label: stale ? 'Stale proc' : 'Processing',
+      nextAction: stale ? `No update for ${formatAge(featureAgeMinutes(feature))}. Check run status / blockers.` : processingStageActions[stage],
+    };
+  }
+
+  const humanStageActions = {
+    'ideation': 'Capture idea and decide whether to run /discovery',
+    'discovery': 'Complete discovery artefact and get approval',
+    'benefit-metric': 'Define measurable outcomes via /benefit-metric',
+    'definition': 'Break into epics/stories via /definition',
+    'spike': 'Run/close spike with PROCEED, REDESIGN, or DEFER',
+    'test-plan': 'Write failing tests via /test-plan',
+    'definition-of-ready': 'Complete DoR checks and sign off',
+    'implementation-review': 'Review implementation findings and decide fixes',
+    'branch-complete': 'Choose branch completion option (draft PR/merge/keep/discard)',
+    'definition-of-done': 'Validate post-merge completion evidence',
+    'trace': 'Run traceability check and resolve chain gaps',
+    'release-pending': 'Prepare and run /release',
+    'loop-design': 'Refine outer/inner operating model',
+    'token-optimization': 'Update routing/token policy and rollout plan',
+    'org-mapping': 'Update organization stage mappings and approvals',
+    'scale-pipeline': 'Advance scaling decisions and operating model',
+  };
+
+  return {
+    state: 'human',
+    label: 'Needs human',
+    nextAction: humanStageActions[stage] || `Review stage '${stage}' and decide next skill`,
+  };
+}
+
+function loopType(stageId) {
+  if (META_STAGES.includes(stageId)) return 'library';
+  if (INNER_LOOP_STAGES.has(stageId)) return 'inner';
+  return 'outer';
+}
+
+function loopStageBadge(stageId) {
+  const kind = loopType(stageId);
+  if (kind === 'inner') return '<span class="tag loop-inner">Inner loop</span>';
+  if (kind === 'library') return '<span class="tag loop-library">Library evolution</span>';
+  return '<span class="tag loop-outer">Outer loop</span>';
+}
+
+const META_STAGE_MAP = {
+  'loop-design': 'ideation',
+  'token-optimization': 'ideation',
+  'org-mapping': 'ideation',
+  'scale-pipeline': 'ideation',
+};
+
+function boardStageId(id) {
+  return META_STAGE_MAP[id] || id;
+}
+
+function stageLabel(id) {
+  if (!id) return '—';
+  const s = STAGES.find(x => x.id === id);
+  if (s) return s.label;
+  if (id === 'loop-design') return 'Meta: Loop Design';
+  if (id === 'token-optimization') return 'Meta: Token Opt';
+  if (id === 'org-mapping') return 'Meta: Org Mapping';
+  if (id === 'scale-pipeline') return 'Meta: Scale Pipeline';
+  return id;
+}
+
+function storyNextSkill(s) {
+  if (s.dodStatus === 'complete')                      return null;
+  if (s.prStatus === 'merged')                         return '/definition-of-done';
+  if (s.prStatus === 'open' || s.prStatus === 'draft') return '/verify-completion';
+  if (s.dorStatus === 'signed-off')                    return '/branch-setup → /implementation-plan';
+  if (s.dorStatus === 'blocked')                       return 'Fix DoR blockers → re-run /definition-of-ready';
+  if (s.reviewStatus === 'passed' && s.testPlan)       return '/definition-of-ready';
+  if (s.reviewStatus === 'passed')                     return '/test-plan';
+  if (s.reviewStatus === 'has-findings')               return s.highFindings > 0 ? 'Fix HIGH findings → re-run /review' : 'Acknowledge MEDs → run /test-plan';
+  return '/review';
+}
+
+function metaStageBadge(stageId) {
+  if (!META_STAGE_MAP[stageId]) return '';
+  return `<span class="tag" style="color:var(--purple)">Meta: ${stageLabel(stageId).replace('Meta: ','')}</span>`;
+}
+
+function reviewBadge(s) {
+  if (s.reviewStatus === 'passed')       return `<span style="color:var(--green)">✓ Passed</span>`;
+  if (s.reviewStatus === 'has-findings') return `<span style="color:${s.highFindings>0?'var(--red)':'var(--amber)'}">${s.highFindings||0} HIGH finding${s.highFindings!==1?'s':''}</span>`;
+  return `<span style="color:var(--muted)">Not started</span>`;
+}
+function dorBadge(s) {
+  if (s.dorStatus === 'signed-off') return `<span style="color:var(--green)">✓ Signed off</span>`;
+  if (s.dorStatus === 'blocked')    return `<span style="color:var(--red)">✗ Blocked</span>`;
+  return `<span style="color:var(--muted)">Not started</span>`;
+}
+function prBadge(s) {
+  if (!s.prStatus || s.prStatus === 'none') return `<span style="color:var(--muted)">None</span>`;
+  const col = s.prStatus==='merged' ? 'var(--green)' : s.prStatus==='open' ? 'var(--amber)' : 'var(--muted)';
+  const link = s.prUrl ? ` — <a class="drawer-link" href="${esc(s.prUrl)}" target="_blank">open ↗</a>` : '';
+  return `<span style="color:${col}">${s.prStatus}${link}</span>`;
+}
+function dodBadge(s) {
+  if (s.dodStatus === 'complete') return `<span style="color:var(--green)">✓ Complete</span>`;
+  return `<span style="color:var(--muted)">Not started</span>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TDD TASK HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+const TDD_META = {
+  'not-started': { cls: 'tdd-not-started', label: '—' },
+  'red':         { cls: 'tdd-red',         label: 'RED' },
+  'green':       { cls: 'tdd-green',       label: 'GREEN' },
+  'refactor':    { cls: 'tdd-refactor',    label: 'REFACTOR' },
+  'committed':   { cls: 'tdd-committed',   label: '✓ done' },
+};
+
+function tddBadgeHTML(state, extraCls = 'tdd-badge') {
+  const m = TDD_META[state] || TDD_META['not-started'];
+  return `<span class="${extraCls} ${m.cls}">${m.label}</span>`;
+}
+
+function taskCommittedPct(story) {
+  if (!story.tasks || story.tasks.length === 0) return null;
+  const done = story.tasks.filter(t => t.tddState === 'committed').length;
+  return { done, total: story.tasks.length, pct: Math.round((done / story.tasks.length) * 100) };
+}
+
+function taskMiniBarHTML(story) {
+  const tp = taskCommittedPct(story);
+  if (!tp) return '';
+  const col = tp.done === tp.total ? 'var(--teal)' : tp.done > 0 ? 'var(--green)' : 'var(--border)';
+  return `
+  <div class="task-mini-bar">
+    <div class="progress-label"><span style="font-size:9px">Tasks</span><span style="font-size:9px">${tp.done}/${tp.total}</span></div>
+    <div class="progress-bar"><div style="height:100%;border-radius:2px;width:${tp.pct}%;background:${col};transition:width .3s"></div></div>
+  </div>`;
+}
+
+function taskListInlineHTML(story, storyKey) {
+  if (!story.tasks || story.tasks.length === 0) return '';
+  const isOpen  = openTaskLists.has(storyKey);
+  const tp      = taskCommittedPct(story);
+  const items   = story.tasks.map(t => `
+    <div class="task-item">
+      ${tddBadgeHTML(t.tddState || 'not-started')}
+      ${t.file
+        ? `<a class="task-name task-link" href="${t.file}">${esc(t.name)}</a>`
+        : `<span class="task-name">${esc(t.name)}</span>`}
+    </div>`).join('');
+  return `
+  ${taskMiniBarHTML(story)}
+  <button class="task-toggle-btn" data-action="toggle-tasks" data-task-key="${storyKey}">
+    <span class="task-toggle-arrow ${isOpen ? 'open' : ''}">▶</span>
+    <span>${tp ? tp.done + '/' + tp.total : story.tasks.length} task${story.tasks.length !== 1 ? 's' : ''}</span>
+  </button>
+  <div class="task-list-inline ${isOpen ? 'open' : ''}">${items}</div>`;
+}
+
+function drawerTaskListHTML(story) {
+  if (!story.tasks || story.tasks.length === 0) return '<div style="font-size:11px;color:var(--muted)">No tasks defined yet. Add a <code>tasks</code> array to this story in pipeline-state.json.</div>';
+  const tp = taskCommittedPct(story);
+  const items = story.tasks.map((t, i) => `
+    <div class="drawer-task-item">
+      <span class="drawer-task-num">${i + 1}.</span>
+      ${t.file
+        ? `<a class="drawer-task-name task-link" href="${t.file}">${esc(t.name)}</a>`
+        : `<span class="drawer-task-name">${esc(t.name)}</span>`}
+      ${tddBadgeHTML(t.tddState || 'not-started', 'tdd-badge drawer-tdd-badge')}
+    </div>`).join('');
+  return `
+  ${tp ? `
+  <div style="margin-bottom:10px">
+    <div class="progress-label"><span>Tasks committed</span><span>${tp.done}/${tp.total} (${tp.pct}%)</span></div>
+    <div class="progress-bar" style="height:6px"><div style="height:100%;border-radius:3px;width:${tp.pct}%;background:${tp.done===tp.total ? 'var(--teal)' : 'var(--green)'};transition:width .3s"></div></div>
+  </div>` : ''}
+  ${items}`;
+}
+
+function updateTimestamp() {
+  const el = document.getElementById('last-updated');
+  if (allData && allData.updated) {
+    const d = new Date(allData.updated);
+    el.textContent = `Updated ${d.toLocaleString()}`;
+  } else {
+    el.textContent = '';
+  }
+}
+
+function clampColWidth(w) {
+  return Math.max(COL_MIN, Math.min(COL_MAX, w));
+}
+
+function resolveColumnWidth(stageId, activeCount, doneCount) {
+  const base = clampColWidth(columnUi.stageWidths[stageId] || columnUi.globalWidth);
+  if (!columnUi.autoShrinkEmpty) return base;
+  if (activeCount === 0 && doneCount === 0) return Math.max(96, Math.round(base * 0.48));
+  if (activeCount === 0 && doneCount > 0) return Math.max(120, Math.round(base * 0.72));
+  return base;
+}
+
+function resizeStageColumn(stageId, delta) {
+  const current = clampColWidth(columnUi.stageWidths[stageId] || columnUi.globalWidth);
+  columnUi.stageWidths[stageId] = clampColWidth(current + delta);
+}
+
+function updateColumnWidthUi() {
+  const slider = document.getElementById('column-width-slider');
+  const label  = document.getElementById('column-width-label');
+  if (slider) slider.value = String(columnUi.globalWidth);
+  if (label) label.textContent = `${columnUi.globalWidth}px`;
+}
+
+function setViewMode(mode) {
+  viewMode = mode;
+  document.getElementById('governance-btn').classList.toggle('active', viewMode === 'governance');
+  document.getElementById('outcomes-btn').classList.toggle('active', viewMode === 'outcomes');
+  document.getElementById('library-btn').classList.toggle('active', viewMode === 'library');
+  document.getElementById('story-map-btn').classList.toggle('active', viewMode === 'story-map');
+  render();
+}
+
+function updatePipelineLayoutUi() {
+  const btn = document.getElementById('toggle-loop-group-btn');
+  if (!btn) return;
+  btn.classList.toggle('active', pipelineLayout === 'loop-grouped');
+  btn.textContent = pipelineLayout === 'loop-grouped' ? 'Flat view' : 'Loop grouped';
+}
+
+function resetColumnSizing() {
+  columnUi.globalWidth = 220;
+  columnUi.stageWidths = {};
+  columnUi.autoShrinkEmpty = true;
+  const autoBtn = document.getElementById('toggle-empty-shrink-btn');
+  if (autoBtn) autoBtn.classList.add('active');
+  updateColumnWidthUi();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUTO-POLL  (only while a pipeline is actively running)
+// ─────────────────────────────────────────────────────────────────────────────
+const ACTIVE_STAGES = new Set([
+  'branch-setup', 'implementation-plan', 'subagent-execution', 'verify-completion'
+]);
+
+function hasActiveFeature() {
+  if (!allData || !allData.features) return false;
+  return allData.features.some(f => ACTIVE_STAGES.has(f.stage));
+}
+
+let _pollTimer = null;
+let _pollLastTs = null;
+
+async function pollState() {
+  if (!hasActiveFeature()) {
+    clearInterval(_pollTimer);
+    _pollTimer = null;
+    return;
+  }
+  try {
+    const resp = await fetch(STATE_FILE + '?_=' + Date.now());
+    if (!resp.ok) return;
+    const data = await resp.json();
+    if (data.updated && data.updated !== _pollLastTs) {
+      _pollLastTs = data.updated;
+      allData = normalizeData(data);
+      render();
+    }
+  } catch (e) { /* file:// or server unavailable — silently ignore */ }
+}
+
+function startPollingIfActive() {
+  if (_pollTimer || !hasActiveFeature()) return;
+  _pollLastTs = allData && allData.updated ? allData.updated : null;
+  _pollTimer = setInterval(pollState, 10000);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────────────────
+initFilters();
+updateColumnWidthUi();
+updatePipelineLayoutUi();
+loadState().then(startPollingIfActive);
+</script>
+</body>
+</html>

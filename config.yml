@@ -1,0 +1,76 @@
+# Skills Pipeline Install Config
+# --------------------------------
+# Controls which components are copied, which profile is active,
+# and what the install script asks the user to fill in.
+#
+# Used by: scripts/install.sh, scripts/install.ps1
+# Also referenced by: /bootstrap skill when run post-install.
+
+# Default context profile to activate.
+# Options: personal | work
+# This file is copied to .github/context.yml during install.
+default_profile: personal
+
+# Required placeholders the install script will prompt for.
+# These are substituted into copilot-instructions.md after copy.
+placeholders:
+  - key: "[FILL IN BEFORE COMMITTING]"           # Product context placeholder
+    prompt: "Describe your product in 1–2 sentences (for copilot-instructions.md):"
+  - key: "[FILL IN BEFORE COMMITTING]"           # Coding standards placeholder
+    prompt: "Name your primary language and test framework (e.g. TypeScript + Vitest):"
+
+# Skills to include. Set to false to skip copying a skill.
+# All true by default. Set reverse-engineer to false for greenfield repos
+# that have no legacy codebase to analyse.
+skills:
+  discovery: true
+  benefit-metric: true
+  definition: true
+  review: true
+  test-plan: true
+  definition-of-ready: true
+  definition-of-done: true
+  trace: true
+  decisions: true
+  ea-registry: true
+  loop-design: true
+  token-optimization: true
+  org-mapping: true
+  scale-pipeline: true
+  reverse-engineer: true
+  bootstrap: true
+  spike: true
+  programme: true
+  metric-review: true
+  release: true
+  branch-setup: true
+  implementation-plan: true
+  tdd: true
+  subagent-execution: true
+  implementation-review: true
+  verify-completion: true
+  systematic-debugging: true
+  branch-complete: true
+  clarify: true
+  levelup: true
+  workflow: true
+  coverage-map: true
+  ideate: true
+  record-signal: true
+
+# Optional extras to scaffold during install.
+# Set to false to skip.
+extras:
+  standards_directory: true       # .github/standards/ with index.yml
+  product_directory: true         # .github/product/ with starter context files
+  pipeline_visualiser: true       # .github/pipeline-viz.html
+  pipeline_state_sample: true     # .github/pipeline-state.sample.json
+  pr_template: true               # .github/pull_request_template.md
+  architecture_guardrails: true   # .github/architecture-guardrails.md
+
+# Source repository (used by install scripts for curl/clone).
+source:
+  owner: heymishy
+  repo: skills-repo
+  branch: master
+  base_url: "https://raw.githubusercontent.com/heymishy/skills-repo/master"

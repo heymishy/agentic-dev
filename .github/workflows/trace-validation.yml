@@ -1,0 +1,73 @@
+name: Trace Validation
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'artefacts/**'
+      - '.github/pipeline-state.json'
+      - '.github/skills/**'
+
+jobs:
+  trace-validation:
+    name: Validate traceability chain
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install jsonschema
+        run: pip install jsonschema pyyaml
+
+      - name: Check exemption labels
+        id: check-labels
+        env:
+          LABELS: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          python3 - <<'EOF'
+          import json, os, sys, yaml
+
+          labels_json = os.environ.get('LABELS', '[]')
+          labels = json.loads(labels_json)
+
+          config_path = '.github/trace-validation.yml'
+          if not os.path.exists(config_path):
+              print('No trace-validation.yml found — running all checks.')
+              print('EXEMPTED=false')
+              sys.exit(0)
+
+          with open(config_path) as f:
+              config = yaml.safe_load(f)
+
+          exemption_labels = config.get('exemption_labels', [])
+          for label in labels:
+              if label in exemption_labels:
+                  print(f'PR has exemption label "{label}" — skipping trace validation.')
+                  with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+                      out.write('EXEMPTED=true\n')
+                  sys.exit(0)
+
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as out:
+              out.write('EXEMPTED=false\n')
+          EOF
+
+      - name: Run trace validation
+        if: steps.check-labels.outputs.EXEMPTED != 'true'
+        run: |
+          bash scripts/validate-trace.sh --ci
+        continue-on-error: false
+
+      - name: Upload trace report
+        if: always() && steps.check-labels.outputs.EXEMPTED != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: trace-validation-report
+          path: trace-validation-report.json
+          retention-days: 14
+          if-no-files-found: ignore
