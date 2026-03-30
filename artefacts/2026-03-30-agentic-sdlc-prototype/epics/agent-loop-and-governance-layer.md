@@ -6,7 +6,7 @@
 
 ## Goal
 
-A trivial feature task can flow from Mission Control Inbox to Done through three
+A trivial feature task can flow from a filesystem queue Inbox folder to Done through three
 sequentially invoked, stateless TypeScript agents. Each agent loads a versioned skill
 from the local filesystem, performs defined work, checks that work against the skill's
 falsifiable criteria, and emits a structured trace entry containing a prompt hash that
@@ -44,21 +44,22 @@ that governed the original decisions.
 ## Human Oversight Level
 
 **Oversight:** Medium
-**Rationale:** New architecture on alpha runtime (Mission Control). Queue semantics under
-programmatic invocation are untested. Agent independence mechanism is novel. Single
-builder — no pairing. Human review at PR is appropriate before moving to Epic 2.
+**Rationale:** Novel architecture on a greenfield codebase. Queue semantics under
+programmatic invocation are well-understood (filesystem ops) but the governance layer
+(skill loading, trace emission, hash verification, assurance agent independence) is new.
+Single builder — no pairing. Human review at PR is appropriate before moving to Epic 2.
 
 ## Complexity Rating
 
-**Rating:** 3
-**Rationale:** High ambiguity on Mission Control queue reliability under sequential
-programmatic invocation, and on enforcing genuine agent independence in a single-operator
-environment. Both are direct prototype assumptions that could invalidate the governance
-claim if wrong.
+**Rating:** 2
+**Rationale:** Filesystem queue mechanics are well-understood (no alpha software). Primary
+ambiguity is in enforcing genuine agent independence in a single-operator environment,
+and confirming that the governance layer (skill loading, hash verification, assurance) is
+correctly wired end-to-end.
 
 ## Scope Stability
 
-**Stability:** Unstable
-**Rationale:** Mission Control is alpha software. S1 may reveal queue semantics that
-require S2–S4 to be redesigned. The walking skeleton approach is chosen specifically to
-surface this before governance complexity is added.
+**Stability:** Stable
+**Rationale:** Filesystem queue is a well-understood mechanism with no external service
+dependency. S1 validates queue semantics before governance complexity is added; the
+walking skeleton approach ensures each story leaves the system in a runnable state.

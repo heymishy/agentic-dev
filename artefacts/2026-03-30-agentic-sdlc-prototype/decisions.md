@@ -9,6 +9,7 @@
 
 | # | Date | Type | Decision summary | Decided by | Linked to |
 |---|------|------|-----------------|------------|-----------|
+| DL-006 | 2026-03-31 | ARCH | Replace Mission Control queue with filesystem queue (folder-based, JSON task files). Foundry is the first real runtime after the prototype — no MC migration step. See ADR-002. | Hamish | ADR-002, S1 all |
 | DL-005 | 2026-03-31 | ACTION | Participant required for S6 AC1 (legibility test) and S7 AC4 (dry-run). Must be named and time-committed before S1 branch is merged. Blocking on S6 and S7 execution — not on S1–S5. | Hamish | S6 W4, S7 W4 |
 | DL-004 | 2026-03-31 | RISK-ACCEPT | Review finding 1-M1 (S2 AC1 "stores in memory" describes internal state, not observable behaviour): risk accepted; addressed at test level — S2 test plan verifies the observable outcome (hash in trace matches file bytes at invocation time) rather than internal state. AC1 story text not amended. | Hamish | S2 AC1, Review run 1 |
 | DL-001 | 2026-03-30 | RISK-ACCEPT | S3 AC1 partial gap accepted — "not from session" constraint cannot be disproved by automated test; mitigated by three structural measures in S3 test plan | Hamish | S3 AC1, ADR-001 |
@@ -191,8 +192,8 @@ The automated test suite covers:
    module-level caching across invocations.
 
 The runtime enforcement mechanism is the process-boundary invocation pattern: each agent is invoked
-as a separate Node.js process via the Mission Control queue handler. This is documented in the README
-and cold-start protocol. Removing the process boundary constitutes an architectural change requiring
+as a separate Node.js process — the calling script reads the task from the filesystem queue and
+invokes each agent file directly. This is documented in the README and cold-start protocol. Removing the process boundary constitutes an architectural change requiring
 this ADR to be revisited (see Revisit triggers).
 
 **Option B** is rejected: a manual-only strategy is insufficient for a structural claim at the
@@ -239,3 +240,108 @@ If any trigger is reached, **Option C** from the options above becomes the imple
    Sequential invocation is what makes the current process boundary a clean isolation mechanism;
    parallelism breaks that assumption without necessarily breaking the structural tests, creating a
    gap between what the tests assert and what the runtime enforces.
+
+---
+
+### ADR-002 — Filesystem queue replaces Mission Control; Azure AI Foundry is the first real runtime
+
+**Date:** 2026-03-31
+**Status:** Accepted
+**Decided by:** Hamish — product owner and sole builder
+
+> **Context for future collaborators:** Mission Control was the original queue platform.
+> A pre-flight check at the start of S1 implementation confirmed Docker was not running
+> in the target environment, surfacing the alpha-software instability risk documented in
+> the discovery (Assumption 1). Rather than resolve the Docker issue, the decision was made
+> to eliminate the external dependency entirely — the queue mechanism was never part of the
+> governance proof, only the scaffolding around it.
+
+---
+
+**Context:**
+
+The original discovery mandated Mission Control (MC) — an alpha Kanban-style queue that runs
+via Docker Compose — as the queue and agent runtime for the prototype. Three specific concerns
+made this a poor fit:
+
+1. **External service dependency.** MC requires Docker Desktop running, an image pull from
+   Docker Hub (pinned to a specific release), and a container process staying alive across all
+   three agent invocations. Any of these failing before or during a demo collapses the 30-minute
+   self-service bar (M4).
+
+2. **Alpha software risk.** MC is under active development. API contract, column name schema, and
+   HTTP response shapes could change between the moment of pinning and any future clone of the
+   repo. The S1 pre-flight check exposed this risk before it produced any rework.
+
+3. **Governance claim dependency on scaffolding.** The governance loop — skill loading, trace
+   emission, hash verification, assurance agent independence — does not depend on any property
+   of Mission Control specifically. It depends on reliable shared state transitions. A filesystem
+   queue (folder moves + JSON files) satisfies that requirement with zero external dependencies,
+   full determinism, and no Docker or network required.
+
+**Additionally:** MC was originally positioned as a stepping stone toward Azure AI Foundry.
+After removing MC, Foundry becomes the direct next target after the prototype, not the third
+step. This simplifies the migration path: governance layer (skills, trace schema, authority
+registry, agent logic) transfers unchanged; only the queue mechanism swaps.
+
+---
+
+**Options Considered**
+
+| Option | Mechanism | Pros | Cons |
+|--------|-----------|------|------|
+| A — Keep Mission Control | Debug Docker, proceed with MC as planned | No artefact rewrite | External dependency; alpha software risk; Docker required for every demo; pre-flight friction |
+| B — Filesystem queue, then MC, then Foundry | Prototype on filesystem, migrate to MC, then migrate to Foundry | Migration path incremental | Two migration steps instead of one; MC adds complexity without additional governance value |
+| C — Filesystem queue, then Foundry directly | Prototype on filesystem, next version on Foundry | Zero external service; deterministic; one migration path; removes entire MC risk class | Foundry timeline is less certain than local prototype — explicitly not a prototype concern |
+
+---
+
+**Decision:**
+
+**Option C** — filesystem queue for the prototype; Azure AI Foundry is the first real runtime
+target after the prototype.
+
+**Filesystem queue design:**
+- `queue/inbox/` — task JSON files awaiting the dev agent
+- `queue/review/` — task JSON files awaiting the review agent
+- `queue/quality-review/` — task JSON files awaiting the assurance agent
+- `queue/done/` — completed task JSON files
+- `queue/history.jsonl` — append-only newline-delimited JSON history of all transitions
+- Tasks are JSON files named `task-<id>.json`
+- State transitions: `fs.rename()` moves the file between folders; history entry appended to `queue/history.jsonl`
+- No Docker, no HTTP API, no external service of any kind
+
+**What transfers unchanged to Foundry:**
+- All three agent logic files (`dev-agent.ts`, `review-agent.ts`, `assurance-agent.ts`)
+- Skill loading and prompt hashing (`src/lib/skill-loader.ts` — S2)
+- Trace schema (`src/types/trace.ts`, `TraceEntry`, `AssuranceRecord` — S2–S4)
+- Authority registry pattern (S4)
+- Only the queue client (`src/lib/queue-client.ts`) is replaced when migrating to Foundry
+
+---
+
+**Consequences:**
+
+- `node-fetch` dependency removed from `package.json` — no HTTP client needed
+- `docker-compose.yml` removed from the repository — no Docker required for the prototype
+- Integration tests no longer require Docker — they use temporary directories (`os.tmpdir()`) as fixture queues; this means `@integration` tagged tests can run in any CI environment without Docker available
+- S1 complexity rating changes from 2 → 1 (filesystem operations are well-understood; no alpha software risk)
+- S1 W2 warning (unstable — MC alpha software) is dissolved; scope stability becomes Stable
+- S7 setup instructions change: `mkdir -p queue/{inbox,review,quality-review,done}` or `npm run init-queue` replaces `docker compose up`
+- All other stories (S2–S7): governance logic, trace schema, skill loading are unchanged — only references to MC column names or MC API are updated to filesystem equivalents
+
+---
+
+**Revisit triggers:**
+
+1. **Filesystem queue becomes a bottleneck:** If sequential filesystem reads/writes become
+   unreliable under any test scenario (unlikely — prototype is single-threaded and sequential),
+   revisit the queue mechanism before adding concurrency.
+
+2. **Foundry hosting becomes available for the prototype phase:** If Azure AI Foundry hosted
+   agents become accessible within the prototype timeline, migrate the queue client directly
+   to Foundry's queue mechanism without introducing MC as an intermediate step.
+
+3. **Demo environment requires a UI:** If a stakeholder demonstration requires a visible
+   Kanban-style board rather than reading JSON files, add a thin read-only HTML visualisation
+   of `queue/history.jsonl` rather than reintroducing MC.

@@ -136,6 +136,10 @@ Skill files and templates are content, not code — they are governed by pipelin
 | ADR-003 | Active | Schema-first: fields defined before use | `pipeline-state.schema.json` evolution |
 | ADR-004 | Active | `context.yml` is the single config source of truth | Skill files, viz config reading |
 
+> **Feature-level ADRs:** ADRs specific to a feature (e.g. prototype queue architecture choices) live in
+> `artefacts/[feature]/decisions.md`. They constrain that feature's stories but not repo-wide patterns.
+> See `artefacts/2026-03-30-agentic-sdlc-prototype/decisions.md` ADR-001 and ADR-002 for the prototype ADRs.
+
 ---
 
 ### ADR-001: Single-file viz, no build step

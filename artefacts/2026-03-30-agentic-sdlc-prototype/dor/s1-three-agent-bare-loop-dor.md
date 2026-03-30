@@ -5,7 +5,7 @@
 **Verification script:** `artefacts/2026-03-30-agentic-sdlc-prototype/verification-scripts/s1-three-agent-bare-loop-verification.md`
 **Contract proposal:** `artefacts/2026-03-30-agentic-sdlc-prototype/dor/s1-three-agent-bare-loop-dor-contract.md`
 **Assessed by:** Copilot
-**Date:** 2026-03-31
+**Date:** 2026-03-31 — updated 2026-03-31 (ADR-002: filesystem queue replaces Mission Control)
 
 ---
 
@@ -20,8 +20,8 @@
 | H5 | Benefit linkage field references a named metric | ✅ | M1 — Autonomous loop completion |
 | H6 | Complexity is rated | ✅ | Rating: 2 |
 | H7 | No unresolved HIGH findings from the review report | ✅ | 1-H1 resolved in review session; no story-specific HIGH |
-| H8 | Test plan has no uncovered ACs (or gaps explicitly acknowledged) | ✅ | Gap acknowledged: Docker required for integration tests (@integration tag) |
-| H9 | Architecture Constraints field populated; no Category E HIGH findings | ✅ | 5 constraints listed; review Category E: PASS |
+| H8 | Test plan has no uncovered ACs (or gaps explicitly acknowledged) | ✅ | No coverage gaps — integration tests use tmp dirs, no Docker required |
+| H9 | Architecture Constraints field populated; no Category E HIGH findings | ✅ | 5 constraints listed; review Category E: PASS; ADR-002 governs queue choice |
 | H-E2E | CSS-layout-dependent ACs requiring E2E tooling | ✅ N/A | No CSS or UI elements |
 | H-NFR | NFR profile exists | ✅ | `artefacts/2026-03-30-agentic-sdlc-prototype/nfr-profile.md` |
 | H-NFR2 | Compliance NFRs with regulatory clauses have human sign-off | ✅ N/A | No compliance frameworks (nfr-profile.md) |
@@ -36,7 +36,7 @@
 | # | Check | Status | Risk | Acknowledged by |
 |---|-------|--------|------|-----------------|
 | W1 | NFRs identified | ✅ | — | — |
-| W2 | Scope stability declared | ⚠️ | **Unstable** — Mission Control is alpha software; queue semantics under programmatic invocation are an untested assumption. If this story fails, the prototype approach requires reassessment. | Hamish — 2026-03-31 (acknowledged: this story exists precisely to test the assumption; failure is a signal, not a surprise) |
+| W2 | Scope stability declared | ✅ | **Stable** — filesystem queue; no external service dependency, no alpha software. ADR-002 documents the rationale. | Hamish — 2026-03-31 |
 | W3 | MEDIUM findings acknowledged | ✅ N/A | No MEDIUM findings apply to S1 | — |
 | W4 | Verification script reviewed by domain expert | ⚠️ | Solo project — Hamish is sole builder, tech lead, and QA. Self-review only. | Hamish — 2026-03-31 |
 | W5 | No UNCERTAIN gap items left unaddressed | ✅ | All gaps are acknowledged with explicit patterns | — |
@@ -71,16 +71,19 @@ Constraints:
   structural stubs only; S2–S4 will extend them. Do not anticipate S2 logic.
 - No polling mechanism under any circumstances — agents are invoked manually via CLI.
 - No error recovery or retry logic — out of scope for the prototype.
-- docker-compose.yml must pin Mission Control to a specific release tag confirmed during
-  discovery — do not use `latest`.
-- Integration tests must be tagged `@integration` and skip cleanly when Docker is not running.
+- No Docker, no HTTP client, no external services — the queue is purely filesystem
+  (folder moves + JSON task files). See ADR-002 in decisions.md.
+- Queue root is passed to each agent as `--queueRoot <path>` CLI argument.
+  Hardcoded paths are forbidden — this allows integration tests to use tmp dirs.
+- Integration tests must use `os.tmpdir()` fixture directories. No Docker check required.
+  All tests (unit and integration) can run in any environment with Node.js.
 - Architecture standards: read `.github/architecture-guardrails.md` before implementing.
-  Do not introduce patterns listed as anti-patterns or violate Active ADRs. ADR-001 governs
-  agent isolation — no shared module-level state introduced between agent files.
+  Do not introduce patterns listed as anti-patterns or violate Active ADRs. ADR-001
+  (feature decisions.md) governs agent isolation — no shared module-level state between
+  agent files.
 - Open a draft PR when tests pass — do not mark ready for review.
-- If you encounter an ambiguity about Mission Control's API (column names, task creation
-  mechanism, transition method): add a PR comment describing it and do not mark ready for review.
-  Specifically: confirm actual column names from the live MC API before hardcoding.
+- PR-comment trigger resolution protocol: if you encounter an ambiguity not covered
+  by the ACs — add a PR comment describing it and stop. Do not stub and continue.
 
 Oversight level: Medium
 (tech_lead = Hamish; share DoR artefact before beginning implementation)

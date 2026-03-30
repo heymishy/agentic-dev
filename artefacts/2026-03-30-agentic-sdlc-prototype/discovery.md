@@ -45,7 +45,7 @@ Four forces have converged simultaneously:
 The governance gap was previously bounded by human throughput — perhaps dozens of consequential decisions per person per day, slow enough that review and course correction were at least theoretically possible. Agents remove that bound. Thousands of decisions per hour, each inheriting the same governance gap, compounding at machine speed. The same misconfiguration that produced drift in a human team produces systematic deviation at scale before anyone notices. The gap didn't worsen conceptually — it worsened operationally.
 
 **2. The tooling to close the loop has only just become viable.**
-Encoding policy as versioned, executable instructions and having agents apply, trace, and verify them was theoretically possible but practically out of reach for most organisations until roughly the last 18 months. SKILL.md standards, agent runtimes like Mission Control, and MCP servers providing live organisational context are new. The ability to build a governed three-agent loop on a laptop over a weekend is new. The problem is old; the tractability is recent.
+Encoding policy as versioned, executable instructions and having agents apply, trace, and verify them was theoretically possible but practically out of reach for most organisations until roughly the last 18 months. SKILL.md standards, lightweight agent runtimes, and MCP servers providing live organisational context are new. The ability to build a governed three-agent loop on a laptop over a weekend is new. The problem is old; the tractability is recent.
 
 **3. Regulatory direction is becoming explicit about AI governance.**
 The Basel Committee, financial services regulators across multiple markets, and internal audit frameworks are moving from "we're watching" to "here are our expectations." The specific emerging requirement — demonstrate which policy governed a given AI decision and how compliance was verified — is exactly the gap this prototype
@@ -77,7 +77,7 @@ against their respective skills, confirms both prompt hashes match registered ve
 emits an assurance record, moves task to Done or escalates to human review, terminates.
 
 **A complete run satisfies all of:**
-- Task is in Done in Mission Control
+- Task is in Done (in the queue's `queue/done/` folder)
 - Three trace entries exist (agent identity, skill name + version, prompt hash,
   per-criterion pass/fail, decision outcome)
 - Assurance record confirms prompt hash in dev agent trace matches currently registered
@@ -85,9 +85,9 @@ emits an assurance record, moves task to Done or escalates to human review, term
 - A person who wasn't present can open the trace log and reconstruct what happened,
   what policy governed it, and whether compliance was verified — without asking anyone
 
-**Form:** a running system. Cloneable, runnable with `docker compose up`,
-self-contained. Clone → create task → trigger loop → read complete audit trail in
-under 30 minutes on a laptop, no guided walkthrough.
+**Form:** a running system. Cloneable, self-contained. Clone → initialise queue folders
+(`npm run init-queue`) → create task → trigger loop → read complete audit trail in
+under 30 minutes on a laptop, no guided walkthrough. No Docker, no external services.
 
 ---
 
@@ -104,7 +104,7 @@ under 30 minutes on a laptop, no guided walkthrough.
    prototype hashes files from disk.
 
 3. **Production-grade security hardening** — no mTLS, no secrets management, no RBAC
-   beyond Mission Control built-ins, no network isolation, no penetration testing.
+   beyond filesystem-level access controls, no network isolation, no penetration testing.
    Prompt hash verification and trace integrity are the security-relevant behaviours in
    scope. Everything needed for regulated production deployment is explicitly deferred.
 
@@ -130,11 +130,10 @@ under 30 minutes on a laptop, no guided walkthrough.
 
 **Assumptions:**
 
-- **Mission Control queue is reliable shared state for sequential agent handoffs** —
-  SQLite-backed queue semantics tested for human Kanban use haven't been verified under
-  programmatic sequential agent invocation. Race conditions, duplicate processing, or
-  dropped state are untested. Mission Control is alpha software under active
-  development.
+- **Filesystem queue provides reliable shared state for sequential agent handoffs** —
+  single-threaded sequential invocation produces no race conditions; `fs.rename()` is
+  atomic within a single filesystem. No external service, no Docker, no alpha software
+  dependency (see ADR-002).
 
 - **Prompt hashing is stable and meaningful** — requires consistent file encoding, line
   endings, and whitespace handling across dev and assurance agent environments. A hash
@@ -158,10 +157,6 @@ under 30 minutes on a laptop, no guided walkthrough.
 
 **Risks:**
 
-- **Mission Control alpha instability** — API or schema changes mid-build could force
-  rework unrelated to the governance proof. *Mitigation: pin to a specific release at
-  the start of the build; do not update during prototype phase.*
-
 - **The loop closes but not necessarily correctly** — the assurance agent verifies
   process was followed, not that outcomes were sound. A trace claiming 80% test
   coverage on meaningless tests is formally valid but substantively wrong. This is a
@@ -174,10 +169,11 @@ under 30 minutes on a laptop, no guided walkthrough.
   architectural rule; document how independence is maintained as part of the
   prototype's own governance record.*
 
-- **30-minute self-service bar may not be achievable** — requires zero-friction Mission
-  Control setup, clearly scripted agent invocation, and a readable trace log. If any of
-  those three requires a guide, the prototype has described the governance model
-  alongside the system rather than embedded it — exactly the problem it exists to solve.
+- **30-minute self-service bar may not be achievable** — requires zero-friction queue
+  initialisation (`npm run init-queue`), clearly scripted agent invocation, and a
+  readable trace log. If any of those three requires a guide, the prototype has described
+  the governance model alongside the system rather than embedded it — exactly the problem
+  it exists to solve. The absence of Docker removes the most common setup friction point.
 
 - **Sceptical auditors may not accept a synthetic task** — proves the loop can close
   under ideal conditions, not under production complexity. If presented as proof of
@@ -227,11 +223,12 @@ under 30 minutes on a laptop, no guided walkthrough.
 
 ## Constraints
 
-**Runtime and infrastructure:** Mission Control is the mandated queue and agent
-runtime — no substitutions. Runs locally via Docker Compose. Must run on a single
-laptop without external network dependencies beyond initial clone and image pull. No
-cloud infrastructure, no always-on compute, no external services required for a
-complete run.
+**Runtime and infrastructure:** A filesystem-based queue (folder moves + JSON task
+files) is the queue mechanism for the prototype — no Docker, no external service.
+Must run on a single laptop without external network dependencies beyond initial
+clone. No cloud infrastructure, no always-on compute, no external services required
+for a complete run. Azure AI Foundry is the first real runtime target after the
+prototype (see ADR-002 in feature decisions.md).
 
 **Skills and filesystem:** Skills are read from the local filesystem (cloned
 skills-repo). No remote skill registry, no API-based skill resolution. The skills-repo

@@ -6,9 +6,18 @@
     {
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
-      "stage": "definition-of-ready",
+      "stage": "implementation-plan",
       "health": "green",
-      "updatedAt": "2026-03-31T00:00:00Z",
+      "updatedAt": "2026-04-01T00:00:00Z",
+      "worktree": ".worktrees/s1-three-agent-bare-loop",
+      "branch": "feature/s1-three-agent-bare-loop",
+      "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md",
+      "tasks": [
+        { "id": "task-1", "name": "Project scaffold", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+        { "id": "task-2", "name": "Queue client + unit tests (filesystem, ADR-002)", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+        { "id": "task-3", "name": "Three agent scripts", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+        { "id": "task-4", "name": "Integration tests (AC1–AC5)", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" }
+      ],
       "dorStatus": {
         "s1-three-agent-bare-loop": "signed-off",
         "s2-dev-agent-skill-trace": "signed-off",
@@ -27,7 +36,7 @@
           "acVerified": 0,
           "hasLayoutDependentGaps": false,
           "e2eToolingRequired": false,
-          "notes": "Integration tests require Docker Compose (@integration tag); unit tests are Docker-free"
+          "notes": "Filesystem queue (ADR-002) — no Docker required. Integration tests use os.tmpdir() fixtures. Unit: 6, Integration: 5, all CI-friendly."
         },
         "s2-dev-agent-skill-trace": {
           "status": "written",

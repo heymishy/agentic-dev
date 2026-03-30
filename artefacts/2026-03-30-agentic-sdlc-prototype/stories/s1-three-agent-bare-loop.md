@@ -7,10 +7,10 @@
 ## User Story
 
 As an **engineer building the prototype**,
-I want a task to move from Mission Control Inbox to Done through three sequentially
+I want a task to move from `queue/inbox/` to `queue/done/` through three sequentially
 invoked TypeScript agent scripts with no governance logic yet,
-So that I can confirm Mission Control's queue state transitions are reliable under
-programmatic sequential invocation before adding the governance layer that depends on
+So that I can confirm the filesystem queue produces reliable state transitions under
+sequential programmatic invocation before adding the governance layer that depends on
 them — directly moving metric M1 (autonomous loop completion) from 0% to a proven
 plumbing baseline.
 
@@ -19,13 +19,13 @@ plumbing baseline.
 **Metric moved:** M1 — Autonomous loop completion on an unseen task
 **How:** This story establishes that the bare queue skeleton works under the conditions
 the governance loop requires. Without this, M1 cannot be measured — the system doesn't
-exist. If queue semantics fail here, the entire prototype approach must be reconsidered
-before any further work.
+exist. The filesystem queue replaces Mission Control as the queue mechanism (see ADR-002);
+if queue semantics fail here, an alternative queue design must be chosen before continuing.
 
 ## Architecture Constraints
 
 - TypeScript strict mode — mandatory, no exceptions (discovery constraint)
-- Mission Control via Docker Compose — no runtime substitutions (discovery constraint)
+- Filesystem queue via folder moves and JSON task files — no Docker, no external services, no HTTP client (ADR-002)
 - Skills read from local filesystem only (discovery constraint) — not yet exercised in
   this story, but agent script structure must be designed to support it in S2
 - No external system connections of any kind (discovery constraint)
@@ -41,27 +41,29 @@ before any further work.
 
 ## Acceptance Criteria
 
-**AC1:** Given Mission Control is running locally via `docker compose up` and a task
-  exists in the Inbox column, When the dev agent script is invoked via the command line,
-  Then the task transitions to the Review column in Mission Control and the script exits
-  cleanly with no error output.
+**AC1:** Given the queue is initialised (folders exist) and a task JSON file exists in
+  `queue/inbox/`, When the dev agent script is invoked via the command line,
+  Then the task file has moved to `queue/review/` and the script exits cleanly with
+  no error output.
 
-**AC2:** Given the task is in the Review column, When the review agent script is invoked,
-  Then the task transitions to the Quality Review column in Mission Control and the
-  script exits cleanly with no error output.
+**AC2:** Given the task file is in `queue/review/`, When the review agent script is
+  invoked, Then the task file has moved to `queue/quality-review/` and the script
+  exits cleanly with no error output.
 
-**AC3:** Given the task is in the Quality Review column, When the assurance agent script
-  is invoked, Then the task transitions to the Done column in Mission Control and the
-  script exits cleanly with no error output.
+**AC3:** Given the task file is in `queue/quality-review/`, When the assurance agent
+  script is invoked, Then the task file has moved to `queue/done/` and the script
+  exits cleanly with no error output.
 
-**AC4:** Given all three agent scripts have been invoked sequentially, When the Mission
-  Control board is inspected, Then the task is in Done and its activity history shows
-  three distinct state transitions — one per agent invocation — with no duplicates or
-  dropped transitions.
+**AC4:** Given all three agent scripts have been invoked sequentially, When
+  `queue/history.jsonl` is read, Then it contains exactly three transition entries
+  — one per agent invocation — in chronological order with no duplicates or dropped
+  transitions, and each entry records the task ID, the from-folder, the to-folder,
+  and an ISO timestamp.
 
 **AC5:** Given the full sequence is run a second time against a different task (to
-  confirm the loop isn't sensitive to task identity), When all three scripts are invoked,
-  Then the second task also moves to Done cleanly with three recorded transitions.
+  confirm the loop isn't sensitive to task identity), When all three scripts are
+  invoked, Then the second task also moves to `queue/done/` cleanly with three
+  recorded transitions in `queue/history.jsonl`.
 
 ## Out of Scope
 
@@ -75,17 +77,17 @@ before any further work.
 
 ## NFRs
 
-- **Performance:** Each agent script completes its queue interaction within 5 seconds
-  under normal local conditions (not a hard SLO — a signal that Mission Control's
-  programmatic API is responsive enough for the prototype)
+- **Performance:** Each agent script completes its queue interaction within 1 second
+  under normal local conditions (filesystem rename is effectively instantaneous; this
+  is a sanity bound, not a hard SLO)
 - **Security:** No credentials, tokens, or organisational data referenced in any script;
   scripts must be runnable on a personal machine using only public tooling
-- **Audit:** The Mission Control task history (built-in) is sufficient audit at this
-  stage; no additional logging required until S2 adds trace emission
+- **Audit:** `queue/history.jsonl` (append-only) is sufficient audit at this stage;
+  no additional logging required until S2 adds trace emission
 
 ## Complexity Rating
 
-**Rating:** 2
-**Scope stability:** Unstable — Mission Control is alpha software; queue semantics under
-programmatic sequential invocation are an untested assumption. If this story fails, the
-prototype approach requires reassessment (see discovery assumptions).
+**Rating:** 1
+**Scope stability:** Stable — filesystem operations are well-understood; no external service
+dependency, no alpha software, no Docker required. Queue semantics under sequential
+programmatic invocation are deterministic. See ADR-002.

@@ -3,7 +3,7 @@
 **Story reference:** `artefacts/2026-03-30-agentic-sdlc-prototype/stories/s1-three-agent-bare-loop.md`
 **Epic reference:** `artefacts/2026-03-30-agentic-sdlc-prototype/epics/agent-loop-and-governance-layer.md`
 **Test plan author:** Copilot
-**Date:** 2026-03-30
+**Date:** 2026-03-30 — updated 2026-03-31 (ADR-002: filesystem queue replaces Mission Control)
 
 ---
 
@@ -11,11 +11,11 @@
 
 | AC | Description | Unit | Integration | E2E | Manual | Gap type | Risk |
 |----|-------------|------|-------------|-----|--------|----------|------|
-| AC1 | Dev agent invoked → task moves to Review; script exits cleanly (exit code 0, no error output) | 1 | 1 | — | — | — | 🟢 |
-| AC2 | Review agent invoked → task moves to Quality Review; script exits cleanly | 1 | 1 | — | — | — | 🟢 |
-| AC3 | Assurance agent invoked → task moves to Done; script exits cleanly | 1 | 1 | — | — | — | 🟢 |
-| AC4 | Mission Control history shows exactly 3 transitions for the task, in sequence, no duplicates or dropped transitions | — | 1 | — | — | — | 🟢 |
-| AC5 | Second task also reaches Done with 3 transitions — loop is not sensitive to task identity | — | 1 | — | — | — | 🟢 |
+| AC1 | Dev agent invoked → task file moves `inbox/` → `review/`; script exits cleanly (exit code 0, no stderr) | 2 | 1 | — | — | — | 🟢 |
+| AC2 | Review agent invoked → task file moves `review/` → `quality-review/`; script exits cleanly | 2 | 1 | — | — | — | 🟢 |
+| AC3 | Assurance agent invoked → task file moves `quality-review/` → `done/`; script exits cleanly | 2 | 1 | — | — | — | 🟢 |
+| AC4 | `queue/history.jsonl` contains exactly 3 entries after full loop: each with taskId, from, to, ISO timestamp; no duplicates | 1 | 1 | — | — | — | 🟢 |
+| AC5 | Second task also reaches `done/` with 3 history entries — loop not sensitive to task identity | — | 1 | — | — | — | 🟢 |
 
 ---
 
@@ -23,110 +23,136 @@
 
 | Gap | AC | Gap type | Reason | Handling |
 |-----|----|----------|--------|---------|
-| Integration tests require a running Mission Control instance (Docker Compose). Cannot be run in a standard Jest environment without Docker. | AC1–AC5 | Tooling constraint | Mission Control runs as a Docker container; no in-process mock that faithfully replicates its queue state transition semantics. | Integration tests are tagged `@integration` and run separately from unit tests (`npm run test:integration`). Unit tests use a lightweight queue-client mock for structure-only verification. |
+| No gap — integration tests run without Docker or external services | — | None | Filesystem ops require no external process | Integration tests use `os.tmpdir()` fixture dirs and run in any environment including CI |
 
 ---
 
 ## Test Data Strategy
 
-**Source:** Synthetic — tasks created programmatically by test setup using Mission Control's API; deleted in teardown.
+**Source:** Synthetic — task JSON files created programmatically by test setup in a temporary directory; cleaned up in teardown.
 
-**PCI/sensitivity in scope:** No — task names are synthetic (e.g. `test-task-s1-001`); no real work items.
+**PCI/sensitivity in scope:** No — task IDs are synthetic (e.g. `test-task-s1-001`); no real work items.
 
-**Availability:** Requires `docker compose up` in the test environment. Integration tests are gated behind a Docker availability check — they skip cleanly when Docker is not running rather than failing.
+**Availability:** No Docker, no network, no external service. Tests run wherever Node.js runs.
 
-**Owner:** Each integration test creates and deletes its own task; no shared task state.
+**Owner:** Each test creates its own isolated tmp directory; no shared filesystem state between tests.
 
 ### Data requirements per AC
 
 | AC | Data needed | Source | Sensitive fields | Notes |
 |----|-------------|--------|-----------------|-------|
-| AC1–AC3 | A task in Inbox column | Created in test setup via Mission Control API | None | Task ID returned by API; passed to agent scripts as argument |
-| AC4 | Same task after full 3-agent run | Created in setup; history read post-run | None | History endpoint returns ordered list of transitions |
-| AC5 | A second, distinct task in Inbox | Created in setup; separate task ID | None | Distinct ID confirms loop is not stateful on task identity |
+| AC1–AC3 | A task JSON file in the source folder | Created in test setup via `fs.writeFileSync` | None | Task ID embedded in filename: `task-<id>.json` |
+| AC4 | `queue/history.jsonl` after all 3 agent runs | Appended by each agent during test | None | Each line is a JSON object: `{ taskId, from, to, timestamp }` |
+| AC5 | A second, distinct task JSON file | Created in setup; separate task ID | None | Distinct ID confirms loop is not stateful on task identity |
 
 ---
 
 ## Unit Tests
 
-### `moveTaskToColumn` — returns updated task state when API responds successfully
+### `moveTask` — moves task file from source dir to dest dir
 
-- **Verifies:** AC1, AC2, AC3 (structure of queue interaction, not live Mission Control)
-- **Precondition:** Mock HTTP client configured to return `200 OK` with updated task body; column argument is `"Review"`.
-- **Action:** Call `moveTaskToColumn(taskId, 'Review', mockClient)`.
-- **Expected result:** Returns an object with `column: "Review"` and the original `taskId`. No exception thrown.
+- **Verifies:** AC1, AC2, AC3 (filesystem move logic)
+- **Precondition:** Temp dirs for source and dest created; `task-001.json` written to source dir with valid JSON payload.
+- **Action:** Call `moveTask('task-001', sourceDir, destDir)`.
+- **Expected result:** `task-001.json` exists in `destDir`; does not exist in `sourceDir`. No exception thrown.
 - **Edge case:** No — happy path.
 
-### `moveTaskToColumn` — throws when Mission Control API returns non-200
+### `moveTask` — throws when source file does not exist
 
-- **Verifies:** AC1 (clean exit constraint: a failed API call is not a clean exit)
-- **Precondition:** Mock HTTP client configured to return `503 Service Unavailable`.
-- **Action:** Call `moveTaskToColumn(taskId, 'Review', mockClient)`.
-- **Expected result:** Throws a typed error containing the HTTP status. Does not return silently.
-- **Edge case:** Yes — API failure.
+- **Verifies:** AC1 (clean exit constraint: an attempted move on a missing file must not silently succeed)
+- **Precondition:** Source dir exists; no task file present.
+- **Action:** Call `moveTask('task-missing', sourceDir, destDir)`.
+- **Expected result:** Throws an error. Does not return silently. Does not create any file.
+- **Edge case:** Yes — missing source file.
 
-### `parseTaskHistory` — extracts ordered transition list from Mission Control history response
+### `appendHistory` — appends a valid JSONL entry to history file
 
-- **Verifies:** AC4 (history parsing logic, independent of live Mission Control)
-- **Precondition:** Synthetic Mission Control history response JSON with 3 transition records: `Inbox→Review`, `Review→QualityReview`, `QualityReview→Done`.
-- **Action:** Call `parseTaskHistory(historyResponseJson)`.
-- **Expected result:** Returns an array of 3 strings in order: `["Inbox→Review", "Review→QualityReview", "QualityReview→Done"]`. No duplicates.
+- **Verifies:** AC4 (history append logic)
+- **Precondition:** Temp dir with no history file yet.
+- **Action:** Call `appendHistory('task-001', 'inbox', 'review', historyPath)`.
+- **Expected result:** `historyPath` exists and contains exactly one line; parsed JSON has keys `taskId`, `from`, `to`, `timestamp`; `timestamp` is a valid ISO string.
 - **Edge case:** No.
+
+### `parseHistory` — reads and parses all history entries in order
+
+- **Verifies:** AC4 (history parsing logic)
+- **Precondition:** History file containing 3 manually written JSONL lines: `inbox→review`, `review→quality-review`, `quality-review→done`.
+- **Action:** Call `parseHistory(historyPath)`.
+- **Expected result:** Returns an array of 3 objects in the order written. Each has `taskId`, `from`, `to`, `timestamp` fields.
+- **Edge case:** No.
+
+### `getTaskInDir` — returns task filename when exactly one task JSON is present
+
+- **Verifies:** AC1, AC2, AC3 (agent entry point's ability to pick up the waiting task)
+- **Precondition:** Temp dir containing exactly one file: `task-001.json`.
+- **Action:** Call `getTaskInDir(dir)`.
+- **Expected result:** Returns `'task-001'` (the task ID, without path or extension).
+- **Edge case:** No.
+
+### `getTaskInDir` — throws when directory is empty
+
+- **Verifies:** AC1 (agent must not silently do nothing when no task is waiting)
+- **Precondition:** Empty temp dir.
+- **Action:** Call `getTaskInDir(dir)`.
+- **Expected result:** Throws an error containing "no task".
+- **Edge case:** Yes — empty queue directory.
 
 ---
 
 ## Integration Tests
 
-### Dev agent — task transitions from Inbox to Review
+All integration tests use isolated temporary directories. No Docker. No external services.
+Tagged `@integration` and run via `npm run test:integration`.
+
+### Dev agent — task file moves from inbox to review
 
 - **Verifies:** AC1
-- **Precondition:** Mission Control running via Docker Compose; task created in Inbox via API.
-- **Action:** Run `npx ts-node src/agents/dev-agent.ts --taskId <id>`.
-- **Expected result:** (1) Script exits with code 0. (2) No content written to stderr. (3) Task column is `Review` when queried via Mission Control API immediately after.
-- **Edge case:** No.
+- **Precondition:** Tmp queue dirs created; `task-001.json` placed in `inbox/`.
+- **Action:** Run `npx ts-node src/agents/dev-agent.ts --queueRoot <tmpDir> --taskId task-001`.
+- **Expected result:** (1) Script exits with code 0. (2) No content written to stderr. (3) `task-001.json` exists in `tmpDir/review/`; does not exist in `tmpDir/inbox/`.
 - **Tag:** `@integration`
 
-### Review agent — task transitions from Review to Quality Review
+### Review agent — task file moves from review to quality-review
 
 - **Verifies:** AC2
-- **Precondition:** Mission Control running; task in Review column (from AC1 run or setup).
-- **Action:** Run `npx ts-node src/agents/review-agent.ts --taskId <id>`.
-- **Expected result:** (1) Exit code 0. (2) No stderr. (3) Task column is `QualityReview`.
+- **Precondition:** Tmp queue dirs; `task-001.json` in `review/` (from AC1 run or setup).
+- **Action:** Run `npx ts-node src/agents/review-agent.ts --queueRoot <tmpDir> --taskId task-001`.
+- **Expected result:** (1) Exit code 0. (2) No stderr. (3) `task-001.json` in `tmpDir/quality-review/`; not in `review/`.
 - **Tag:** `@integration`
 
-### Assurance agent — task transitions from Quality Review to Done
+### Assurance agent — task file moves from quality-review to done
 
 - **Verifies:** AC3
-- **Precondition:** Mission Control running; task in QualityReview column.
-- **Action:** Run `npx ts-node src/agents/assurance-agent.ts --taskId <id>`.
-- **Expected result:** (1) Exit code 0. (2) No stderr. (3) Task column is `Done`.
+- **Precondition:** Tmp queue dirs; `task-001.json` in `quality-review/`.
+- **Action:** Run `npx ts-node src/agents/assurance-agent.ts --queueRoot <tmpDir> --taskId task-001`.
+- **Expected result:** (1) Exit code 0. (2) No stderr. (3) `task-001.json` in `tmpDir/done/`; not in `quality-review/`.
 - **Tag:** `@integration`
 
-### Full loop history — three transitions recorded in sequence, no duplicates
+### Full loop history — three entries in `history.jsonl`, in sequence, no duplicates
 
 - **Verifies:** AC4
-- **Precondition:** The same task has been moved through AC1→AC2→AC3 in sequence.
-- **Action:** Query the Mission Control task history API for the task.
-- **Expected result:** History contains exactly 3 entries in order: `Inbox→Review`, `Review→QualityReview`, `QualityReview→Done`. No entry appears twice.
+- **Precondition:** The same task has been moved through AC1→AC2→AC3 in a single tmp queue.
+- **Action:** Read `tmpDir/history.jsonl`; parse each line as JSON.
+- **Expected result:** Exactly 3 entries in order: `inbox→review`, `review→quality-review`, `quality-review→done`. No entry appears twice. Each entry contains `taskId`, `from`, `to`, and a valid ISO `timestamp`.
 - **Tag:** `@integration`
 
 ### Second task — loop is not sensitive to task identity
 
 - **Verifies:** AC5
-- **Precondition:** A second distinct task created in Inbox (different ID and name from the first task).
-- **Action:** Run all three agent scripts sequentially against the second task.
-- **Expected result:** Second task reaches Done with exactly 3 transitions. History is identical in structure to the first task's history.
+- **Precondition:** A second distinct task (`task-002.json`) placed in `inbox/` of a fresh tmp queue.
+- **Action:** Run all three agent scripts sequentially against `task-002`.
+- **Expected result:** `task-002.json` in `done/`; `history.jsonl` contains exactly 3 entries for `task-002`; structure identical to the first task's run.
 - **Tag:** `@integration`
 
 ---
 
 ## NFR Tests
 
-### Each agent script completes queue interaction within 5 seconds
+### Each agent script completes its filesystem interaction within 1 second
 
 - **Verifies:** NFR (Performance)
-- **Mechanism:** Time each agent script invocation in the integration tests. Jest timeout for integration tests set to 6000 ms per test (buffer above 5-second signal). Record actual elapsed times in test output.
-- **Pass condition:** No integration test times out at 6 seconds. Elapsed times logged for reference.
+- **Mechanism:** Time each agent script invocation in the integration tests. Jest timeout set to 5000 ms per test as a safety bound. Record actual elapsed times in test output.
+- **Pass condition:** No integration test times out at 5 seconds. Actual times are expected to be well under 100 ms (filesystem rename is near-instantaneous).
 - **Tag:** `@integration`
 
 ---

@@ -67,7 +67,7 @@ targets need another iteration — but only because that tradeoff is explicit he
 | **Target** | Under 30 minutes, with no more than 2 assistance requests |
 | **Minimum validation signal** | Under 60 minutes — proves self-containment even if README needs polish |
 | **Measurement method** | At least one dry run with a person unfamiliar with the build. Clock time recorded. Assistance requests counted and noted verbatim (each one identifies a specific README defect). |
-| **Feedback loop** | If over 30 minutes: identify which step caused the overrun — Mission Control setup, script clarity, or trace readability — and fix before external demonstration. **More than 2 assistance requests during the dry run is a blocking defect regardless of total time.** A run completed in 28 minutes with 5 interventions does not pass — fix the README before any external demonstration. |
+| **Feedback loop** | If over 30 minutes: identify which step caused the overrun — queue initialisation, script clarity, or trace readability — and fix before external demonstration. **More than 2 assistance requests during the dry run is a blocking defect regardless of total time.** A run completed in 28 minutes with 5 interventions does not pass — fix the README before any external demonstration. |
 
 ---
 
