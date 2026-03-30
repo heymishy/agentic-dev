@@ -1,0 +1,19 @@
+# Mission Control — version pinned to v2.0.1. Do NOT change to latest.
+#
+# STOP: Before running `docker compose up`, resolve the image name.
+# Look up the correct Docker Hub image name in the Mission Control v2.0.1 release notes.
+# Replace [MC_IMAGE] with the real image (e.g. vendor/mission-control) then commit.
+# Per the S1 resolution protocol: do not proceed past a failed `docker compose up`
+# without a confirmed image name — a TODO in merged code is not permitted.
+
+services:
+  mission-control:
+    image: "[MC_IMAGE]:v2.0.1"
+    ports:
+      - "8080:8080"
+    volumes:
+      - mc-data:/data
+    restart: unless-stopped
+
+volumes:
+  mc-data:
