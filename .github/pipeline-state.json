@@ -6,12 +6,15 @@
     {
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
-      "stage": "verify-completion",
+      "stage": "definition-of-done",
       "health": "green",
-      "updatedAt": "2026-03-31T05:10:00Z",
-      "worktree": ".worktrees/s1-three-agent-bare-loop",
-      "branch": "feature/s1-three-agent-bare-loop",
-      "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md",
+      "updatedAt": "2026-03-31T06:00:00Z",
+      "worktree": null,
+      "branch": null,
+      "activePlan": null,
+      "dodStatus": { "s1-three-agent-bare-loop": "complete" },
+      "prStatus": { "s1-three-agent-bare-loop": "merged" },
+      "releaseReady": false,
       "tasks": [
         { "id": "task-1", "name": "Project scaffold", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
         { "id": "task-2", "name": "Queue client + unit tests (filesystem, ADR-002)", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
@@ -98,17 +101,89 @@
         }
       },
       "epics": [
-        "epics/agent-loop-and-governance-layer.md",
-        "epics/verification-and-demonstrability.md"
-      ],
-      "stories": [
-        "stories/s1-three-agent-bare-loop.md",
-        "stories/s2-dev-agent-skill-trace.md",
-        "stories/s3-review-agent-trace-validation.md",
-        "stories/s4-assurance-agent-cold-start.md",
-        "stories/s5-injected-failure-detection.md",
-        "stories/s6-trace-schema-tamper-evidence.md",
-        "stories/s7-self-service-packaging.md"
+        {
+          "slug": "agent-loop-and-governance-layer",
+          "name": "Agent Loop and Governance Layer",
+          "status": "in-progress",
+          "stories": [
+            {
+              "slug": "s1-three-agent-bare-loop",
+              "name": "S1: Three-agent bare loop closes end-to-end",
+              "stage": "verify-completion",
+              "health": "green",
+              "reviewStatus": "passed",
+              "dorStatus": "signed-off",
+              "testPlan": { "status": "written", "totalTests": 12, "passing": 12, "acTotal": 5, "acVerified": 5 },
+              "tasks": [
+                { "id": "task-1", "name": "Project scaffold", "tddState": "committed", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+                { "id": "task-2", "name": "Queue client + unit tests (filesystem, ADR-002)", "tddState": "committed", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+                { "id": "task-3", "name": "Three agent scripts", "tddState": "committed", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+                { "id": "task-4", "name": "Integration tests (AC1–AC5)", "tddState": "committed", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" }
+              ]
+            },
+            {
+              "slug": "s2-dev-agent-skill-trace",
+              "name": "S2: Dev agent loads skill, self-checks, emits trace",
+              "stage": "definition-of-ready",
+              "health": "green",
+              "reviewStatus": "passed",
+              "dorStatus": "signed-off",
+              "testPlan": { "status": "written", "totalTests": 11, "passing": 0, "acTotal": 6, "acVerified": 0 }
+            },
+            {
+              "slug": "s3-review-agent-trace-validation",
+              "name": "S3: Review agent validates dev trace and emits its own trace",
+              "stage": "definition-of-ready",
+              "health": "green",
+              "reviewStatus": "passed",
+              "dorStatus": "signed-off",
+              "testPlan": { "status": "written", "totalTests": 11, "passing": 0, "acTotal": 5, "acVerified": 0 }
+            },
+            {
+              "slug": "s4-assurance-agent-cold-start",
+              "name": "S4: Assurance agent runs cold-start, validates both traces",
+              "stage": "definition-of-ready",
+              "health": "green",
+              "reviewStatus": "passed",
+              "dorStatus": "signed-off",
+              "testPlan": { "status": "written", "totalTests": 15, "passing": 0, "acTotal": 5, "acVerified": 0 }
+            }
+          ]
+        },
+        {
+          "slug": "verification-and-demonstrability",
+          "name": "Verification and Demonstrability",
+          "status": "not-started",
+          "stories": [
+            {
+              "slug": "s5-injected-failure-detection",
+              "name": "S5: Assurance agent detects injected criterion failure",
+              "stage": "definition-of-ready",
+              "health": "green",
+              "reviewStatus": "passed",
+              "dorStatus": "signed-off",
+              "testPlan": { "status": "written", "totalTests": 0, "passing": 0, "acTotal": 5, "acVerified": 0 }
+            },
+            {
+              "slug": "s6-trace-schema-tamper-evidence",
+              "name": "S6: Trace schema finalised — tamper-evidence and legibility",
+              "stage": "definition-of-ready",
+              "health": "green",
+              "reviewStatus": "passed",
+              "dorStatus": "signed-off",
+              "testPlan": { "status": "written", "totalTests": 1, "passing": 0, "acTotal": 5, "acVerified": 0 }
+            },
+            {
+              "slug": "s7-self-service-packaging",
+              "name": "S7: Self-service packaging — Docker Compose, README, 30-min bar",
+              "stage": "definition-of-ready",
+              "health": "green",
+              "reviewStatus": "passed",
+              "dorStatus": "signed-off",
+              "testPlan": { "status": "written", "totalTests": 1, "passing": 0, "acTotal": 5, "acVerified": 0 }
+            }
+          ]
+        }
       ],
       "decisions": "decisions.md",
       "decisionsGate": {
@@ -128,7 +203,7 @@
           "baseline": "0% — system does not exist yet",
           "signal": "not-yet-measured",
           "lastMeasured": null,
-          "evidence": null,
+          "evidence": "S1 merged — queue plumbing confirmed as build checkpoint. Unseen-task measurement requires S2-S4 (governance layer). Not yet measurable.",
           "contributingStories": ["s1-three-agent-bare-loop", "s2-dev-agent-skill-trace", "s3-review-agent-trace-validation", "s4-assurance-agent-cold-start"]
         },
         {
