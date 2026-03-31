@@ -12,94 +12,7 @@
       "worktree": null,
       "branch": null,
       "activePlan": null,
-      "dodStatus": { "s1-three-agent-bare-loop": "complete" },
-      "prStatus": { "s1-three-agent-bare-loop": "merged" },
       "releaseReady": false,
-      "tasks": [
-        { "id": "task-1", "name": "Project scaffold", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
-        { "id": "task-2", "name": "Queue client + unit tests (filesystem, ADR-002)", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
-        { "id": "task-3", "name": "Three agent scripts", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
-        { "id": "task-4", "name": "Integration tests (AC1\u2013AC5)", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" }
-      ],
-      "dorStatus": {
-        "s1-three-agent-bare-loop": "signed-off",
-        "s2-dev-agent-skill-trace": "signed-off",
-        "s3-review-agent-trace-validation": "signed-off",
-        "s4-assurance-agent-cold-start": "signed-off",
-        "s5-injected-failure-detection": "signed-off",
-        "s6-trace-schema-tamper-evidence": "signed-off",
-        "s7-self-service-packaging": "signed-off"
-      },
-      "testPlans": {
-        "s1-three-agent-bare-loop": {
-          "status": "written",
-          "totalTests": 12,
-          "passing": 12,
-          "acTotal": 5,
-          "acVerified": 5,
-          "hasLayoutDependentGaps": false,
-          "e2eToolingRequired": false,
-          "notes": "Filesystem queue (ADR-002) — no Docker required. Unit: 7/7, Integration: 5/5. All ACs verified. DL-007: spawnSync+explicit-args required for subprocess invocation on paths with spaces."
-        },
-        "s2-dev-agent-skill-trace": {
-          "status": "written",
-          "totalTests": 11,
-          "passing": 0,
-          "acTotal": 6,
-          "acVerified": 0,
-          "hasLayoutDependentGaps": false,
-          "e2eToolingRequired": false
-        },
-        "s3-review-agent-trace-validation": {
-          "status": "written",
-          "totalTests": 11,
-          "passing": 0,
-          "acTotal": 5,
-          "acVerified": 0,
-          "hasLayoutDependentGaps": false,
-          "e2eToolingRequired": false
-        },
-        "s4-assurance-agent-cold-start": {
-          "status": "written",
-          "totalTests": 15,
-          "passing": 0,
-          "acTotal": 5,
-          "acVerified": 0,
-          "hasLayoutDependentGaps": false,
-          "e2eToolingRequired": false,
-          "notes": "ADR-001 logged 2026-03-31 — Decisions Gate closed. Added cold-start independence integration test (stale-file-replacement analog). S4/S5 boundary explicit in Out of Scope."
-        },
-        "s5-injected-failure-detection": {
-          "status": "written",
-          "totalTests": 0,
-          "passing": 0,
-          "acTotal": 5,
-          "acVerified": 0,
-          "hasLayoutDependentGaps": false,
-          "e2eToolingRequired": false,
-          "notes": "Fully manual test protocol by design — artefact is verification/m3-test-results.md"
-        },
-        "s6-trace-schema-tamper-evidence": {
-          "status": "written",
-          "totalTests": 1,
-          "passing": 0,
-          "acTotal": 5,
-          "acVerified": 0,
-          "hasLayoutDependentGaps": false,
-          "e2eToolingRequired": false,
-          "notes": "1 automated test (tsc --strict); AC1-AC4 are manual protocols; artefacts: verification/m5-test-results.md + verification/m6-test-results.md"
-        },
-        "s7-self-service-packaging": {
-          "status": "written",
-          "totalTests": 1,
-          "passing": 0,
-          "acTotal": 5,
-          "acVerified": 0,
-          "hasLayoutDependentGaps": false,
-          "e2eToolingRequired": false,
-          "notes": "1 automated test (Docker Compose health check); all ACs validated by manual dry-run; artefact: verification/m4-dry-run-results.md"
-        }
-      },
       "epics": [
         {
           "slug": "agent-loop-and-governance-layer",
@@ -109,10 +22,13 @@
             {
               "slug": "s1-three-agent-bare-loop",
               "name": "S1: Three-agent bare loop closes end-to-end",
-              "stage": "verify-completion",
+              "stage": "definition-of-done",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
+              "dodStatus": "complete",
+              "prStatus": "merged",
+              "releaseReady": false,
               "testPlan": { "status": "written", "totalTests": 12, "passing": 12, "acTotal": 5, "acVerified": 5 },
               "tasks": [
                 { "id": "task-1", "name": "Project scaffold", "tddState": "committed", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
