@@ -6,7 +6,7 @@
     "build": "tsc --noEmit",
     "test": "jest --testPathIgnorePatterns=integration",
     "test:integration": "jest --testPathPattern=integration --testTimeout=5000",
-    "init-queue": "bash scripts/init-queue.sh"
+    "init-queue": "node scripts/init-queue.js"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
