@@ -41,7 +41,7 @@ No field other than `promptHash` was modified in the dev entry. The review entry
 
 **Verdict:** `escalate`. The assurance agent independently computed the SHA-256 of `./skills/feature-dev/SKILL.md`, compared it with the tampered `promptHash` in the dev trace, found a mismatch, and produced `verdict: escalate` with the specific failing criterion (`DEV_TRACE_VERIFIED`) named and a human-readable reason. The detection is explicit and criterion-level.
 
-**Exit code:** 0. The DoR specified "exits non-zero" but the verification script pass condition only checks verdict and criteriaOutcomes. Exit-code-on-escalate is recorded as Finding F2 below.
+**Exit code:** 1 (corrected in S5 — F2 fix: CLI now exits 1 when verdict is `escalate`).
 
 ---
 
@@ -119,8 +119,10 @@ Impact: Medium — hash-based verification is still meaningful. The threat of a 
 
 Recommended action: Raise as S4 observation for S6 schema/tamper-evidence story. Does not block S5.
 
-### F2 — Exit code 0 on escalate verdict (LOW)
+### F2 — Exit code 0 on escalate verdict — **FIXED in S5**
 
-The DoR stated AC1 as "exits non-zero on modified skill hash." The current assurance-agent.ts CLI exits 0 on escalate verdict — only exits 1 on runtime exceptions. The story AC1 and the verification script pass condition do not mention exit code; they only check verdict and criteriaOutcomes. The gap exists at the DoR level, not the story AC level.
+The DoR stated AC1 as "exits non-zero on modified skill hash." The original assurance-agent.ts CLI exited 0 on escalate verdict. This was identified as F2 during S5 execution.
 
-Recommended action: The assurance agent CLI should exit 1 when verdict is `escalate`. Small fix (3 lines in `main()`). Raise as enhancement for S6 or as a patch commit to master. Does not block S5.
+**Fix applied in S5:** `runAssuranceAgent` now returns `AssuranceRecord`. The CLI `main()` function calls `process.exit(1)` when `record.verdict === 'escalate'`. tsc strict — clean. Exit code confirmed: injected trace → exit 1; clean trace → exit 0.
+
+This fix was made in S5 per explicit tech lead direction — a known wrong CLI behaviour in merged code is a worse position than a slightly longer S5.
