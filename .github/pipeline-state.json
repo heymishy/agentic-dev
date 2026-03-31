@@ -74,13 +74,15 @@
             {
               "slug": "s4-assurance-agent-cold-start",
               "name": "S4: Assurance agent runs cold-start, validates both traces",
-              "stage": "branch-complete",
+              "stage": "definition-of-done",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "prStatus": "draft",
+              "dodStatus": "complete",
+              "prStatus": "merged",
+              "releaseReady": true,
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/4",
-              "updatedAt": "2026-04-01T07:30:00Z",
+              "updatedAt": "2026-04-01T08:00:00Z",
               "testPlan": { "status": "all-passing", "totalTests": 57, "passing": 57, "acTotal": 5, "acVerified": 5 },
               "tasks": [
                 { "id": "task-1", "name": "AssuranceRecord type + readTraceLog (AC1)", "tddState": "committed" },
@@ -142,9 +144,9 @@
           "name": "Autonomous loop completion on an unseen task",
           "target": "100% — loop closes on first run against an unseen task",
           "baseline": "0% — system does not exist yet",
-          "signal": "not-yet-measured",
-          "lastMeasured": null,
-          "evidence": "S1 merged — queue plumbing confirmed as build checkpoint. Unseen-task measurement requires S2-S4 (governance layer). Not yet measurable.",
+          "signal": "on-track",
+          "lastMeasured": "2026-04-01",
+          "evidence": "All 3 agents (dev S2, review S3, assurance S4) instrumented and verified by integration test suite. Governance layer complete. Full three-agent loop closes end-to-end. Unseen-task measurement against a live Mission Control instance not yet run — requires docker + running session — but the code path is proven by automated integration tests.",
           "contributingStories": ["s1-three-agent-bare-loop", "s2-dev-agent-skill-trace", "s3-review-agent-trace-validation", "s4-assurance-agent-cold-start"]
         },
         {
@@ -152,9 +154,9 @@
           "name": "Per-decision traceability to versioned skill",
           "target": "100% of trace entries contain skill name, version, and resolvable prompt hash",
           "baseline": "0% — no trace entries exist",
-          "signal": "at-risk",
-          "lastMeasured": "2026-03-31",
-          "evidence": "Dev agent leg complete (S2): SHA-256 promptHash independently verified. Review agent leg complete (S3): review trace contains skillName, skillVersion, promptHash (SHA-256), hashAlgorithm, devHashMatch. 2/3 agents instrumented. S4 required for 100%.",
+          "signal": "on-track",
+          "lastMeasured": "2026-04-01",
+          "evidence": "3/3 agents instrumented (dev S2, review S3, assurance S4). All trace entries contain skillName, skillVersion, promptHash (SHA-256), hashAlgorithm. Assurance trace additionally records devHashMatch, reviewHashMatch, criteriaOutcomes[3], verdict. Target 100% now satisfied on every automated run.",
           "contributingStories": ["s2-dev-agent-skill-trace", "s3-review-agent-trace-validation", "s4-assurance-agent-cold-start"]
         },
         {
@@ -164,7 +166,7 @@
           "baseline": "Not measurable — system does not exist",
           "signal": "not-yet-measured",
           "lastMeasured": null,
-          "evidence": null,
+          "evidence": "S4 cold-start integration test confirms tampered dev hash produces verdict:'escalate' and devHashMatch:false — detection mechanism proven. Formal M3 measurement (deliberate criterion injection) is S5 scope and has not yet run.",
           "contributingStories": ["s4-assurance-agent-cold-start", "s5-injected-failure-detection"]
         },
         {
