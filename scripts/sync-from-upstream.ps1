@@ -29,7 +29,7 @@ $changed = git diff --name-only HEAD "$Remote/$Branch" -- `
   .github/copilot-instructions.md .github/pipeline-state.schema.json `
   .github/architecture-guardrails.md .github/pull_request_template.md `
   .github/standards/ .github/workflows/ `
-  scripts/ tests/ README.md CHANGELOG.md
+  README.md CHANGELOG.md
 
 if (-not $changed) {
   Write-Host "Already up to date." -ForegroundColor Green
@@ -51,7 +51,7 @@ git checkout "$Remote/$Branch" -- `
   .github/copilot-instructions.md .github/pipeline-state.schema.json `
   .github/architecture-guardrails.md .github/pull_request_template.md `
   .github/standards/ .github/workflows/ `
-  scripts/ tests/ README.md CHANGELOG.md
+  README.md CHANGELOG.md
 
 # ── 5. Commit ─────────────────────────────────────────────────────────────────
 $date = Get-Date -Format "yyyy-MM-dd"

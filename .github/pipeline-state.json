@@ -6,9 +6,9 @@
     {
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
-      "stage": "implementation-plan",
+      "stage": "verify-completion",
       "health": "green",
-      "updatedAt": "2026-03-31T07:00:00Z",
+      "updatedAt": "2026-03-31T08:00:00Z",
       "worktree": ".worktrees/s2-dev-agent-skill-trace",
       "branch": "feature/s2-dev-agent-skill-trace",
       "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s2-dev-agent-skill-trace-plan.md",
@@ -40,11 +40,11 @@
             {
               "slug": "s2-dev-agent-skill-trace",
               "name": "S2: Dev agent loads skill, self-checks, emits trace",
-              "stage": "definition-of-ready",
+              "stage": "verify-completion",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "testPlan": { "status": "written", "totalTests": 11, "passing": 0, "acTotal": 6, "acVerified": 0 }
+              "testPlan": { "status": "written", "totalTests": 14, "passing": 14, "acTotal": 6, "acVerified": 6 }
             },
             {
               "slug": "s3-review-agent-trace-validation",
