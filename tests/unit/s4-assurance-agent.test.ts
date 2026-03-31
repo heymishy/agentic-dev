@@ -8,6 +8,7 @@ import {
   readTraceLog,
   validateDevTrace,
   validateReviewTrace,
+  buildAssuranceRecord,
   TraceLogEntry,
 } from '../../src/lib/assurance-validator';
 
@@ -156,5 +157,50 @@ describe('validateReviewTrace', () => {
 
     expect(result.reviewHashMatch).toBe(true);
     expect(result.reviewsDevHashMatch).toBe(true);
+  });
+});
+
+// ── AC4: buildAssuranceRecord ────────────────────────────────────────────────
+
+describe('buildAssuranceRecord', () => {
+  test('emits record with all required fields and closed verdict', () => {
+    const record = buildAssuranceRecord({
+      skillName: 'feature-assurance',
+      skillVersion: '1.0.0',
+      promptHash: 'c'.repeat(64),
+      devResult: { devHashMatch: true },
+      reviewResult: { reviewHashMatch: true, reviewsDevHashMatch: true },
+    });
+
+    expect(record.agentIdentity).toBe('assurance');
+    expect(record.skillName).toBe('feature-assurance');
+    expect(record.skillVersion).toBe('1.0.0');
+    expect(record.promptHash).toBe('c'.repeat(64));
+    expect(record.hashAlgorithm).toBe('sha256');
+    expect(record.devHashMatch).toBe(true);
+    expect(record.reviewHashMatch).toBe(true);
+    expect(record.verdict).toBe('closed');
+    expect(Array.isArray(record.criteriaOutcomes)).toBe(true);
+    expect(record.criteriaOutcomes).toHaveLength(3);
+    expect(record.criteriaOutcomes.every(c => c.result === 'pass')).toBe(true);
+    expect(new Date(record.timestamp).toISOString()).toBe(record.timestamp);
+  });
+
+  test('emits escalate verdict when dev hash does not match', () => {
+    const record = buildAssuranceRecord({
+      skillName: 'feature-assurance',
+      skillVersion: '1.0.0',
+      promptHash: 'c'.repeat(64),
+      devResult: { devHashMatch: false },
+      reviewResult: { reviewHashMatch: true, reviewsDevHashMatch: false },
+    });
+
+    expect(record.verdict).toBe('escalate');
+    expect(record.devHashMatch).toBe(false);
+    const devCriterion = record.criteriaOutcomes.find(
+      c => c.criterion === 'DEV_TRACE_VERIFIED',
+    );
+    expect(devCriterion?.result).toBe('fail');
+    expect(devCriterion?.reason).toBeDefined();
   });
 });

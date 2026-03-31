@@ -1,5 +1,7 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import { computeSkillHash } from './skill-loader';
+import { AssuranceRecord, CriterionResult } from '../types/trace';
 
 export interface TraceLogEntry {
   agentIdentity: string;
@@ -61,4 +63,55 @@ export function validateReviewTrace(
       ? reviewRecordedDevHash === devHashMatch
       : false;
   return { reviewHashMatch, reviewsDevHashMatch };
+}
+
+export function buildAssuranceRecord(params: {
+  skillName: string;
+  skillVersion: string;
+  promptHash: string;
+  devResult: { devHashMatch: boolean };
+  reviewResult: { reviewHashMatch: boolean; reviewsDevHashMatch: boolean };
+}): AssuranceRecord {
+  const devVerified = params.devResult.devHashMatch;
+  const reviewVerified =
+    params.reviewResult.reviewHashMatch && params.reviewResult.reviewsDevHashMatch;
+  const allPass = devVerified && reviewVerified;
+
+  const criteriaOutcomes: CriterionResult[] = [
+    {
+      criterion: 'DEV_TRACE_VERIFIED',
+      result: devVerified ? 'pass' : 'fail',
+      ...(devVerified
+        ? {}
+        : { reason: 'Dev trace prompt hash does not match feature-dev SKILL.md' }),
+    },
+    {
+      criterion: 'REVIEW_TRACE_VERIFIED',
+      result: reviewVerified ? 'pass' : 'fail',
+      ...(reviewVerified ? {} : { reason: 'Review trace validation failed' }),
+    },
+    {
+      criterion: 'ALL_CRITERIA_PASS',
+      result: allPass ? 'pass' : 'fail',
+      ...(allPass ? {} : { reason: 'Not all criteria passed' }),
+    },
+  ];
+
+  return {
+    agentIdentity: 'assurance',
+    skillName: params.skillName,
+    skillVersion: params.skillVersion,
+    promptHash: params.promptHash,
+    hashAlgorithm: 'sha256',
+    devHashMatch: params.devResult.devHashMatch,
+    reviewHashMatch: params.reviewResult.reviewHashMatch,
+    criteriaOutcomes,
+    verdict: allPass ? 'closed' : 'escalate',
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export function emitAssuranceRecord(tracePath: string, record: AssuranceRecord): void {
+  fs.mkdirSync(path.dirname(tracePath), { recursive: true });
+  fs.appendFileSync(tracePath, JSON.stringify(record) + '\n', 'utf-8');
 }
