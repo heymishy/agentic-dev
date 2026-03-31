@@ -120,9 +120,27 @@
 
 | Scenario | AC | Pass condition | Status |
 |----------|----|----------------|--------|
-| 1 | AC1 | `loadSkillFromRegistry` + `computeSkillHash` tests green; trace file on disk | ⬜ |
-| 2 | AC2 | `evaluateCriteria` all-pass + one-fail tests green | ⬜ |
-| 3 | AC3 | All 8 fields present in trace; `hashAlgorithm: "sha256"`; TypeScript compiles strict | ⬜ |
-| 4 | AC4 | Independent SHA-256 of SKILL.md matches `promptHash` in trace | ⬜ |
-| 5 | AC5 | Reject integration test green; task not advanced in queue | ⬜ |
-| 6 | AC6 | Registry integration test green; no hardcoded paths; `skills-registry.json` committed | ⬜ |
+| 1 | AC1 | `loadSkillFromRegistry` + `computeSkillHash` tests green; trace file on disk | ✅ |
+| 2 | AC2 | `evaluateCriteria` all-pass + one-fail tests green | ✅ |
+| 3 | AC3 | All 8 fields present in trace; `hashAlgorithm: "sha256"`; TypeScript compiles strict | ✅ |
+| 4 | AC4 | Independent SHA-256 of SKILL.md matches `promptHash` in trace | ✅ |
+| 5 | AC5 | Reject integration test green; task not advanced in queue | ✅ |
+| 6 | AC6 | Registry integration test green; no hardcoded paths; `skills-registry.json` committed | ✅ |
+
+---
+
+## Verification run — 2026-03-31
+
+**Test run:** 15 unit tests + 11 integration tests = 26/26 passing, 0 failures. TSC strict: clean.
+
+**Hash stability evidence (AC4):**
+Independent `node -e "createHash('sha256')..."` on `skills/feature-dev/SKILL.md` produced `2aa389817ba2dd0f376f7a14344ec5e1d21d418a1696b4e099f3a53dd21eb19a` — exact match with `tests/fixtures/feature-dev.skill.sha256`. Stored hash and live computation agree.
+
+**Cold-start behaviour (NFR):**
+Integration test `NFR: computeSkillHash + evaluateCriteria complete within 2 seconds` completed in **1ms** (limit: 2000ms). No cold-start latency concern.
+
+**No-hardcoded-paths (AC6):**
+`Select-String -Path "src/agents/*.ts","src/lib/*.ts" -Pattern "\.SKILL\.md|skills-repo/"` returned no results. All skill paths resolve through `skills-registry.json`.
+
+**Scope check:**
+6 commits on `feature/s2-dev-agent-skill-trace`, all mapped to S2 task plan steps. No scope creep.

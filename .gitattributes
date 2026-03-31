@@ -1,0 +1,9 @@
+# Default: normalize line endings to LF in the repo, checkout as-is on all platforms
+* text=auto
+
+# Fixture skill files used for SHA-256 hashing — must be byte-exact across platforms
+tests/fixtures/*.md text eol=lf
+tests/fixtures/*.sha256 text eol=lf
+
+# Production skill files — keep LF so hash computation is consistent regardless of OS
+skills/**/*.md text eol=lf
