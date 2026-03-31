@@ -14,11 +14,12 @@ import {
   buildAssuranceRecord,
   emitAssuranceRecord,
 } from '../lib/assurance-validator';
+import { AssuranceRecord } from '../types/trace';
 
 export async function runAssuranceAgent(config: {
   registryPath: string;
   tracePath: string;
-}): Promise<void> {
+}): Promise<AssuranceRecord> {
   const { registryPath, tracePath } = config;
 
   // AC1: read both trace entries from trace log file only — no module-level cache
@@ -57,6 +58,7 @@ export async function runAssuranceAgent(config: {
   });
 
   emitAssuranceRecord(tracePath, record);
+  return record;
 }
 
 async function main(): Promise<void> {
@@ -81,7 +83,10 @@ async function main(): Promise<void> {
   const tracePath =
     idx('--tracePath') >= 0 ? args[idx('--tracePath') + 1] : './trace.jsonl';
 
-  await runAssuranceAgent({ registryPath, tracePath });
+  const record = await runAssuranceAgent({ registryPath, tracePath });
+  if (record.verdict === 'escalate') {
+    process.exit(1);
+  }
 }
 
 // DL-008: guard required — prevents main() firing at import time (breaks integration tests)
