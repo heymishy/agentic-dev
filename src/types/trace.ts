@@ -24,11 +24,16 @@ export interface TraceEntry extends BaseAgentTrace {
   decisionOutcome: 'proceed' | 'reject';
 }
 
-// Stub — extended in S4
 export interface AssuranceRecord {
   agentIdentity: 'assurance';
-  traceFilePath: string;
-  outcome: 'approved' | 'rejected';
+  skillName: string;
+  skillVersion: string;
+  promptHash: string;
+  hashAlgorithm: string;
+  devHashMatch: boolean;
+  reviewHashMatch: boolean;
+  criteriaOutcomes: CriterionResult[];
+  verdict: 'closed' | 'escalate';
   timestamp: string;
 }
 
