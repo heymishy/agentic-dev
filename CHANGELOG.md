@@ -6,6 +6,72 @@ All notable changes to this repository will be documented in this file.
 
 ---
 
+## [0.5.7] — 2026-03-31
+
+### Fixed
+
+#### /implementation-plan, /subagent-execution, /tdd: task state writes enforced earlier and `file` field made consistent
+
+Three related gaps caused the visualiser to show 0 tasks throughout story execution even when implementation was complete:
+
+1. `/implementation-plan` Step 5 (Save and hand off) did not explicitly call out the `pipeline-state.json` write as part of that step — it was only mentioned in the "mandatory final step" section at the end, making it easy to defer. Step 5 now references the write directly and includes it in the completion output.
+
+2. `/subagent-execution` initialised the `tasks` array only in the "mandatory final step" section, meaning it was treated as a post-execution housekeeping item rather than a pre-loop requirement. Task initialisation is now in Step 1 (before the first subagent is dispatched) and Step 2d (after each task commits) has an explicit state update instruction.
+
+3. `/tdd` and `/subagent-execution` were missing the `file` field on each task entry. Without it the visualiser cannot render clickable task links. Both now include `"file": "artefacts/[feature-slug]/plans/[story-slug]-plan.md"` in the task schema. `/tdd` also gained a guard: if starting TDD directly without a prior /implementation-plan run, it creates the tasks array at that point.
+
+---
+
+## [0.5.6] — 2026-03-31
+
+### Fixed
+
+#### Pipeline viz: TDD task links now open in the markdown viewer instead of the browser
+
+Task link anchors were missing the `drawer-link` CSS class. The `openMdViewer` click interceptor only fires on `a.drawer-link` elements, so task links fell through to normal browser navigation — opening the raw `.md` file in the Live Server tab. Added `drawer-link` to both the inline task list and drawer task list anchor elements so they are caught by the interceptor and open in the built-in markdown viewer like all other artefact links.
+
+---
+
+## [0.5.5] — 2026-03-31
+
+### Fixed
+
+#### sync-from-upstream: consumer scripts/ and tests/ no longer overwritten on sync
+
+The sync script previously included `scripts/` and `tests/` in both the diff-check and `git checkout` paths. This meant a sync from upstream would silently overwrite any local customisations a consumer repo had made to their own sync scripts or test fixtures. Both paths have been removed from the sync scope — skills, templates, viz, workflows, and governance files continue to sync as before; local `scripts/` and `tests/` are left untouched.
+
+---
+
+## [0.5.4] — 2026-03-31
+
+### Fixed
+
+#### Pipeline viz: TDD task links resolve correctly when paths are repo-root relative
+
+Task `file` paths written to `pipeline-state.json` by skills are stored as repo-root-relative (`artefacts/feature/plans/...`). The viz is served from `.github/`, so bare-relative paths resolved to `.github/artefacts/...` — a 404. A new `resolveArtPath()` helper prepends `../` to any path that isn't already absolute, protocol-relative, or `../`-anchored. Applied to task links in both the inline task list and the story drawer.
+
+#### Pipeline viz: story drawer now shows both per-story and combined review links
+
+The review link in the story drawer was hardcoded to `${storySlug}-review-1.md`. Projects that produce a combined `all-stories-review-1.md` instead got a 404. The drawer now renders both links so either format is reachable.
+
+---
+
+## [0.5.3] — 2026-03-31
+
+### Fixed
+
+#### Pipeline viz: inner loop now shown as upcoming before a feature enters it
+
+In loop-grouped view, the inner loop lane was entirely hidden until at least one feature had entered a branch-setup or later stage. Users couldn't see the inner loop layout while features were waiting at DoR.
+
+Fix: when one or more features have all stories signed off at DoR but haven't yet run `/branch-setup`, the inner loop lane renders in preview mode — dashed border, reduced opacity, "upcoming" label in the header, and meta text shows "N stages · awaiting entry" instead of "0 active". All inner loop stage columns are shown as empty placeholders so users can see the full sequence before entering it.
+
+#### Pipeline viz: actionable warning when inner loop feature has no story data
+
+When a feature is at an inner loop stage (branch-setup through branch-complete) but its epics contain no stories, the feature card now shows an amber warning with the exact JSON structure needed to fix the pipeline-state.json, rather than silently showing empty epic rows with "No stories". The warning prompts `/workflow` to reconcile or manual story entry.
+
+---
+
 ## [0.5.2] — 2026-03-31
 
 ### Changed

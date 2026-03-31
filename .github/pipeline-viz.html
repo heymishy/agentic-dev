@@ -3504,7 +3504,7 @@ function taskListInlineHTML(story, storyKey) {
     <div class="task-item">
       ${tddBadgeHTML(t.tddState || 'not-started')}
       ${t.file
-        ? `<a class="task-name task-link" href="${resolveArtPath(t.file)}">${esc(t.name)}</a>`
+        ? `<a class="task-name task-link drawer-link" href="${resolveArtPath(t.file)}">${esc(t.name)}</a>`
         : `<span class="task-name">${esc(t.name)}</span>`}
     </div>`).join('');
   return `
@@ -3523,7 +3523,7 @@ function drawerTaskListHTML(story) {
     <div class="drawer-task-item">
       <span class="drawer-task-num">${i + 1}.</span>
       ${t.file
-        ? `<a class="drawer-task-name task-link" href="${resolveArtPath(t.file)}">${esc(t.name)}</a>`
+        ? `<a class="drawer-task-name task-link drawer-link" href="${resolveArtPath(t.file)}">${esc(t.name)}</a>`
         : `<span class="drawer-task-name">${esc(t.name)}</span>`}
       ${tddBadgeHTML(t.tddState || 'not-started', 'tdd-badge drawer-tdd-badge')}
     </div>`).join('');

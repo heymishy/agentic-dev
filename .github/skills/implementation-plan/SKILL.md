@@ -126,11 +126,16 @@ Fix any issues before saving.
 
 Save to `artefacts/[feature]/plans/[story-slug]-plan.md`.
 
+**Before reporting completion, write pipeline-state.json** (see State update below).
+This must happen as part of this step — not deferred to "after we start coding".
+The visualiser shows tasks as soon as the plan is saved; if you skip this write, the viz shows 0 tasks throughout execution.
+
 > ✅ **Implementation plan saved**
 >
 > Path: `artefacts/[feature]/plans/[story-slug]-plan.md`
 > Tasks: [N]
 > ACs covered: [N]/[N]
+> pipeline-state.json: tasks array written ✅
 >
 > **Next step:**
 > 1. Subagents available → run /subagent-execution (recommended)

@@ -55,7 +55,7 @@ Read `.github/context.yml` at start of execution.
 
 ---
 
-## Step 1 — Read the plan once
+## Step 1 — Read the plan and initialise state
 
 Read `artefacts/[feature]/plans/[story-slug]-plan.md` fully.
 
@@ -63,6 +63,19 @@ Extract all tasks:
 - Task number and title
 - Full task text (every step, all code, expected outputs)
 - Adjacent context (what was built before, what comes next)
+
+**Immediately write the `tasks` array to `pipeline-state.json` before dispatching any subagent.**
+This is not a "final step" — it must happen here so the visualiser shows task progress live.
+Set story `stage: "subagent-execution"`, `health: "green"`, `updatedAt: [now]`, and initialise all tasks:
+```json
+{
+  "id": 1,
+  "name": "<task title from plan>",
+  "tddState": "not-started",
+  "file": "artefacts/[feature-slug]/plans/[story-slug]-plan.md"
+}
+```
+All tasks in a story share the same plan `file` path. The visualiser renders each task name as a clickable link to that file.
 
 Create a todo list tracking all tasks.
 
@@ -139,6 +152,7 @@ Repeat until ✅.
 
 - Check off the task in the implementation plan file
 - Record the ending git SHA for this task
+- **Update `pipeline-state.json` now:** set this task's `tddState: "committed"`, run the full test suite, set `testPlan.passing` to the current count, update story `updatedAt`
 
 ---
 
@@ -210,14 +224,10 @@ least capable model that can handle each role to conserve cost:
 
 Update `.github/pipeline-state.json` in the **project repository** progressively during execution:
 
-- When execution begins: set story `stage: "subagent-execution"`, `health: "green"`, `updatedAt: [now]`
-- Initialise a `tasks` array on the story — one entry per task in the implementation plan:
-  ```json
-  { "id": 1, "name": "<task name>", "tddState": "not-started" }
-  ```
+- **At Step 1 (before the loop):** set story `stage: "subagent-execution"`, `health: "green"`, `updatedAt: [now]`, and initialise the `tasks` array — one entry per task with `tddState: "not-started"` and `file` set to the plan path (see Step 1 above)
+- **At Step 2d (after each task commits):** set that task's `tddState: "committed"`, update `testPlan.passing`, update story `updatedAt`
 - As each task moves through TDD, update its `tddState`:
   - Failing test written: `"red"` → minimal implementation passes: `"green"` → refactor done: `"refactor"` → committed: `"committed"`
-- After each task commits: run the full test suite and update `testPlan.passing` with the current passing count, and update story `updatedAt`
 - At any point that the running test count is known, keep `testPlan.passing` current — the visualiser reads this live
 - If a task is stuck or a subagent fails a review: set story `health: "amber"`, note the task in `blocker`
 - When all tasks complete and two-stage review passes: set `health: "green"`, clear `blocker`

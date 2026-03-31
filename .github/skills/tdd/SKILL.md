@@ -170,10 +170,16 @@ Keep all tests green throughout refactor.
 
 Update `.github/pipeline-state.json` in the **project repository** as you progress through each TDD cycle.
 
-For each task, maintain a `tasks` array on the story object. Each task entry:
+**Before the first task:** ensure the story has a `tasks` array initialised with one entry per task. If `/implementation-plan` was run first it will already exist; if starting TDD directly, create it now:
 ```json
-{ "id": 1, "name": "<task name from implementation plan>", "tddState": "not-started" }
+{
+  "id": 1,
+  "name": "<task name from implementation plan>",
+  "tddState": "not-started",
+  "file": "artefacts/[feature-slug]/plans/[story-slug]-plan.md"
+}
 ```
+All tasks in a story share the same plan `file` path. The visualiser renders each task name as a clickable link to that file.
 
 Update `tddState` as the cycle progresses:
 - Task begins, failing test written: `"tddState": "red"`
