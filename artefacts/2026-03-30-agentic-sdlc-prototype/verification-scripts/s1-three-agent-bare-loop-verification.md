@@ -1,103 +1,111 @@
-## AC Verification Script: Three-agent bare loop closes end-to-end
+﻿## AC Verification Script: Three-agent bare loop closes end-to-end
 
 **Story reference:** `artefacts/2026-03-30-agentic-sdlc-prototype/stories/s1-three-agent-bare-loop.md`
 **Test plan reference:** `artefacts/2026-03-30-agentic-sdlc-prototype/test-plans/s1-three-agent-bare-loop-test-plan.md`
 **Verification author:** Copilot
-**Date:** 2026-03-30
+**Date:** 2026-03-31 (rewritten — filesystem queue, ADR-002)
 
 ---
 
 ## Prerequisites
 
-1. Docker Desktop is installed and running.
-2. Repository is cloned.
-3. `npm install` has been run.
-4. `npm test` (unit tests only) exits 0.
-5. `docker compose up -d` has been run and Mission Control is accessible at `http://localhost:PORT` (check `docker compose ps` for the port).
+1. Repository cloned; `npm install` run inside `.worktrees/s1-three-agent-bare-loop/`.
+2. `npm run init-queue` run (creates `queue/{inbox,review,quality-review,done}/` and `queue/history.jsonl`).
+3. No Docker required.
 
 ---
 
-## Scenario 1 — AC1: Dev agent moves task to Review
+## Verification commands
 
-**Setup:** Create a task in Mission Control Inbox via the API or UI. Record the task ID.
+```bash
+# Unit suite
+npm test
 
-**Steps:**
-1. Note the task is in the `Inbox` column.
-2. Run: `npx ts-node src/agents/dev-agent.ts --taskId <id>`
-3. Observe the terminal output and exit code.
-
-**Expected result:** Terminal shows only success output (no stack traces, no `Error:` lines). Script exits with code 0 (`echo $LASTEXITCODE` → `0`). Mission Control shows the task in the `Review` column.
-
-**Pass condition:** Exit code 0. No stderr. Task is in `Review`.
+# Integration suite (runs all 5 ACs)
+npm run test:integration
+```
 
 ---
 
-## Scenario 2 — AC2: Review agent moves task to Quality Review
+## Scenario 1 — AC1: Dev agent moves task from inbox to review
 
-**Setup:** Task is in `Review` column (from Scenario 1).
+**What proves it:** integration test `AC1: dev agent moves task from inbox to review`
 
-**Steps:**
-1. Run: `npx ts-node src/agents/review-agent.ts --taskId <id>`
-2. Observe output and exit code.
+**Mechanics:**
+1. Fixture creates `os.tmpdir()/s1-integration-<rand>/inbox/task-001.json`.
+2. `spawnSync([node, ts-node-bin, src/agents/dev-agent.ts, --queueRoot, <tmpdir>, --taskId, task-001])` is called.
+3. Test asserts `review/task-001.json` exists and `inbox/task-001.json` is absent.
+4. Agent exit code must be 0 (spawnSync result.status); any non-zero throws and fails the test.
 
-**Expected result:** Exit code 0. No stderr. Task is in `QualityReview`.
-
-**Pass condition:** Exit code 0. No error output. Task column is `QualityReview`.
-
----
-
-## Scenario 3 — AC3: Assurance agent moves task to Done
-
-**Setup:** Task is in `QualityReview` column (from Scenario 2).
-
-**Steps:**
-1. Run: `npx ts-node src/agents/assurance-agent.ts --taskId <id>`
-2. Observe output and exit code.
-
-**Expected result:** Exit code 0. No stderr. Task is in `Done`.
-
-**Pass condition:** Exit code 0. No error output. Task column is `Done`.
+**Pass condition:** Exit 0. No stderr. File present in `review/`, absent from `inbox/`.
 
 ---
 
-## Scenario 4 — AC4: History shows exactly 3 transitions in sequence
+## Scenario 2 — AC2: Review agent moves task from review to quality-review
 
-**Setup:** Task has been moved through all three columns (Scenarios 1–3 complete).
+**What proves it:** integration test `AC2: review agent moves task from review to quality-review`
 
-**Steps:**
-1. Query the Mission Control history for the task:
-   `curl http://localhost:<PORT>/api/tasks/<id>/history`
-   or inspect the task's history in the Mission Control UI.
-2. Count the transition entries.
-3. Confirm order: `Inbox→Review`, `Review→QualityReview`, `QualityReview→Done`.
+**Mechanics:**
+1. Fixture creates `review/task-001.json` directly (independent of Scenario 1 fixture).
+2. `spawnSync([node, ts-node-bin, src/agents/review-agent.ts, --queueRoot, <tmpdir>, --taskId, task-001])`.
+3. Asserts `quality-review/task-001.json` exists; `review/task-001.json` absent.
 
-**Expected result:** Exactly 3 transition entries. Order is sequential. No entry appears twice. No transitions to unexpected columns.
-
-**Pass condition:** 3 entries. Correct sequence. No duplicates.
+**Pass condition:** Exit 0. File present in `quality-review/`, absent from `review/`.
 
 ---
 
-## Scenario 5 — AC5: Second task runs cleanly (loop is not task-identity-sensitive)
+## Scenario 3 — AC3: Assurance agent moves task from quality-review to done
 
-**Setup:** Create a second task in Inbox with a different name from the first.
+**What proves it:** integration test `AC3: assurance agent moves task from quality-review to done`
 
-**Steps:**
-1. Record the second task's ID.
-2. Run all three agent scripts in sequence against the new task ID (repeat Scenarios 1–3).
-3. Query the second task's history.
+**Mechanics:**
+1. Fixture creates `quality-review/task-001.json`.
+2. `spawnSync([node, ts-node-bin, src/agents/assurance-agent.ts, --queueRoot, <tmpdir>, --taskId, task-001])`.
+3. Asserts `done/task-001.json` exists; `quality-review/task-001.json` absent.
 
-**Expected result:** Second task reaches `Done` with exactly 3 transitions. No residual state from the first task appears. Behaviour is identical to the first run.
+**Pass condition:** Exit 0. File present in `done/`, absent from `quality-review/`.
 
-**Pass condition:** Second task has 3 transitions, reaches Done cleanly. Integration test `npm run test:integration` passes for the second-task test.
+---
+
+## Scenario 4 — AC4: history.jsonl has exactly 3 entries in sequence
+
+**What proves it:** integration test `AC4: history.jsonl has exactly 3 entries in sequence after full loop`
+
+**Mechanics:**
+1. Runs all three agents sequentially against the same `task-001` fixture.
+2. Calls `parseHistory(path.join(queueRoot, 'history.jsonl'))`.
+3. Asserts `history.length === 3`.
+4. Asserts `history[0]` matches `{ from: 'inbox', to: 'review', taskId: 'task-001' }`.
+5. Asserts `history[1]` matches `{ from: 'review', to: 'quality-review', taskId: 'task-001' }`.
+6. Asserts `history[2]` matches `{ from: 'quality-review', to: 'done', taskId: 'task-001' }`.
+7. For each entry: `new Date(entry.timestamp).toISOString() === entry.timestamp` (valid ISO 8601).
+
+**Pass condition:** 3 entries. Correct sequence. No duplicates. All timestamps are valid ISO 8601.
+
+---
+
+## Scenario 5 — AC5: Second task reaches done cleanly (loop not task-identity sensitive)
+
+**What proves it:** integration test `AC5: second task reaches done with 3 transitions — loop not sensitive to task identity`
+
+**Mechanics:**
+1. Creates a **separate, independent** fixture root (`root2`) — not the same tmpdir as AC1–AC4.
+2. Creates `root2/inbox/task-002.json` (different task ID: `task-002`, not `task-001`).
+3. Runs all three agents against `root2` with `--taskId task-002`.
+4. Asserts `root2/done/task-002.json` exists.
+5. Calls `parseHistory(root2/history.jsonl)` — asserts length 3, all entries have `taskId: 'task-002'`.
+6. `root2` fixture is torn down in `finally` block regardless of outcome.
+
+**Pass condition:** `task-002` reaches `done/` cleanly. 3 transitions in `root2/history.jsonl`, all for `task-002`. Zero residual state from the first run (separate fixture).
 
 ---
 
 ## Summary
 
-| Scenario | AC | Pass condition | Status |
-|----------|----|----------------|--------|
-| 1 | AC1 | Exit 0, no stderr, task in Review | ⬜ |
-| 2 | AC2 | Exit 0, no stderr, task in QualityReview | ⬜ |
-| 3 | AC3 | Exit 0, no stderr, task in Done | ⬜ |
-| 4 | AC4 | Exactly 3 transitions in correct order, no duplicates | ⬜ |
-| 5 | AC5 | Second task reaches Done cleanly, 3 transitions | ⬜ |
+| Scenario | AC | Test | Pass condition | Status |
+|----------|----|------|----------------|--------|
+| 1 | AC1 | `AC1: dev agent moves task from inbox to review` | Exit 0, file in review/, absent from inbox/ | ⬜ |
+| 2 | AC2 | `AC2: review agent moves task from review to quality-review` | Exit 0, file in quality-review/, absent from review/ | ⬜ |
+| 3 | AC3 | `AC3: assurance agent moves task from quality-review to done` | Exit 0, file in done/, absent from quality-review/ | ⬜ |
+| 4 | AC4 | `AC4: history.jsonl has exactly 3 entries in sequence after full loop` | 3 entries, correct sequence, valid ISO timestamps | ⬜ |
+| 5 | AC5 | `AC5: second task reaches done with 3 transitions — loop not sensitive to task identity` | task-002 in done/, 3 transitions, separate fixture, no cross-contamination | ⬜ |

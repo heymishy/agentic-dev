@@ -9,6 +9,7 @@
 
 | # | Date | Type | Decision summary | Decided by | Linked to |
 |---|------|------|-----------------|------------|-----------|
+| DL-007 | 2026-03-31 | IMPL | Agent scripts must be invoked via `spawnSync` with an explicit args array (not `execSync` with a shell command string). Path spaces in the worktree path cause shell arg splitting. `npx ts-node` incurs cold-start overhead that exceeds Jest's default 5s timeout. Fix: `spawnSync(process.execPath, [TS_NODE_BIN, agentFile, ...args])`. S2–S4 test files must use the same pattern. See S1 integration test for reference. | Copilot/Hamish | S1 integration tests, S2–S4 |
 | DL-006 | 2026-03-31 | ARCH | Replace Mission Control queue with filesystem queue (folder-based, JSON task files). Foundry is the first real runtime after the prototype — no MC migration step. See ADR-002. | Hamish | ADR-002, S1 all |
 | DL-005 | 2026-03-31 | ACTION | Participant required for S6 AC1 (legibility test) and S7 AC4 (dry-run). Must be named and time-committed before S1 branch is merged. Blocking on S6 and S7 execution — not on S1–S5. | Hamish | S6 W4, S7 W4 |
 | DL-004 | 2026-03-31 | RISK-ACCEPT | Review finding 1-M1 (S2 AC1 "stores in memory" describes internal state, not observable behaviour): risk accepted; addressed at test level — S2 test plan verifies the observable outcome (hash in trace matches file bytes at invocation time) rather than internal state. AC1 story text not amended. | Hamish | S2 AC1, Review run 1 |

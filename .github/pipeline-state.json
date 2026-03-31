@@ -6,17 +6,17 @@
     {
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
-      "stage": "implementation-plan",
+      "stage": "verify-completion",
       "health": "green",
-      "updatedAt": "2026-04-01T00:00:00Z",
+      "updatedAt": "2026-03-31T05:10:00Z",
       "worktree": ".worktrees/s1-three-agent-bare-loop",
       "branch": "feature/s1-three-agent-bare-loop",
       "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md",
       "tasks": [
-        { "id": "task-1", "name": "Project scaffold", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
-        { "id": "task-2", "name": "Queue client + unit tests (filesystem, ADR-002)", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
-        { "id": "task-3", "name": "Three agent scripts", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
-        { "id": "task-4", "name": "Integration tests (AC1–AC5)", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" }
+        { "id": "task-1", "name": "Project scaffold", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+        { "id": "task-2", "name": "Queue client + unit tests (filesystem, ADR-002)", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+        { "id": "task-3", "name": "Three agent scripts", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" },
+        { "id": "task-4", "name": "Integration tests (AC1\u2013AC5)", "tddState": "complete", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s1-three-agent-bare-loop-plan.md" }
       ],
       "dorStatus": {
         "s1-three-agent-bare-loop": "signed-off",
@@ -30,13 +30,13 @@
       "testPlans": {
         "s1-three-agent-bare-loop": {
           "status": "written",
-          "totalTests": 9,
-          "passing": 0,
+          "totalTests": 12,
+          "passing": 12,
           "acTotal": 5,
-          "acVerified": 0,
+          "acVerified": 5,
           "hasLayoutDependentGaps": false,
           "e2eToolingRequired": false,
-          "notes": "Filesystem queue (ADR-002) — no Docker required. Integration tests use os.tmpdir() fixtures. Unit: 6, Integration: 5, all CI-friendly."
+          "notes": "Filesystem queue (ADR-002) — no Docker required. Unit: 7/7, Integration: 5/5. All ACs verified. DL-007: spawnSync+explicit-args required for subprocess invocation on paths with spaces."
         },
         "s2-dev-agent-skill-trace": {
           "status": "written",
