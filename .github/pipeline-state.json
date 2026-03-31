@@ -6,7 +6,8 @@
     {
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
-      "stage": "definition-of-done",
+      "track": "standard",
+      "stage": "branch-complete",
       "health": "green",
       "updatedAt": "2026-03-31T06:00:00Z",
       "worktree": null,
@@ -44,7 +45,7 @@
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "dodStatus": "pending",
+              "dodStatus": "not-started",
               "prStatus": "draft",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/2",
               "updatedAt": "2026-03-31T07:00:00Z",
