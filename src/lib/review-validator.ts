@@ -1,5 +1,6 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
+import * as path from 'path';
 
 import { CriterionResult, ReviewTraceEntry, TraceEntry } from '../types/trace';
 
@@ -36,5 +37,6 @@ export function buildReviewTraceEntry(params: {
 }
 
 export function emitReviewTraceEntry(tracePath: string, entry: ReviewTraceEntry): void {
+  fs.mkdirSync(path.dirname(tracePath), { recursive: true });
   fs.appendFileSync(tracePath, JSON.stringify(entry) + '\n', 'utf-8');
 }
