@@ -7,9 +7,11 @@
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
       "track": "standard",
-      "stage": "definition-of-done",
+      "stage": "branch-setup",
       "health": "green",
-      "updatedAt": "2026-03-31T09:00:00Z",
+      "updatedAt": "2026-03-31T10:00:00Z",
+      "worktree": ".worktrees/s4-assurance-agent-cold-start",
+      "branch": "feature/s4-assurance-agent-cold-start",
       "releaseReady": false,
       "epics": [
         {
@@ -72,7 +74,7 @@
             {
               "slug": "s4-assurance-agent-cold-start",
               "name": "S4: Assurance agent runs cold-start, validates both traces",
-              "stage": "definition-of-ready",
+              "stage": "branch-setup",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
