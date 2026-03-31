@@ -7,9 +7,9 @@
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
       "track": "standard",
-      "stage": "branch-complete",
+      "stage": "definition-of-done",
       "health": "green",
-      "updatedAt": "2026-04-01T00:00:00Z",
+      "updatedAt": "2026-03-31T09:00:00Z",
       "releaseReady": false,
       "epics": [
         {
@@ -52,13 +52,15 @@
             {
               "slug": "s3-review-agent-trace-validation",
               "name": "S3: Review agent validates dev trace and emits its own trace",
-              "stage": "branch-complete",
+              "stage": "definition-of-done",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "prStatus": "draft",
+              "dodStatus": "complete",
+              "prStatus": "merged",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/3",
-              "updatedAt": "2026-04-01T00:00:00Z",
+              "updatedAt": "2026-03-31T09:00:00Z",
+              "releaseReady": true,
               "testPlan": { "status": "all-passing", "totalTests": 15, "passing": 15, "acTotal": 5, "acVerified": 5 },
               "tasks": [
                 { "id": "task-1", "name": "ReviewTraceEntry type + trace-reader + AC1 unit tests", "tddState": "committed", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md" },
@@ -141,7 +143,7 @@
           "baseline": "0% — no trace entries exist",
           "signal": "at-risk",
           "lastMeasured": "2026-03-31",
-          "evidence": "Dev agent leg complete: SHA-256 promptHash 2aa389817ba2dd0f376f7a14344ec5e1d21d418a1696b4e099f3a53dd21eb19a independently verified from two sources (live compute + stored fixture). 1/3 agents instrumented. S3 and S4 required for full M2 coverage.",
+          "evidence": "Dev agent leg complete (S2): SHA-256 promptHash independently verified. Review agent leg complete (S3): review trace contains skillName, skillVersion, promptHash (SHA-256), hashAlgorithm, devHashMatch. 2/3 agents instrumented. S4 required for 100%.",
           "contributingStories": ["s2-dev-agent-skill-trace", "s3-review-agent-trace-validation", "s4-assurance-agent-cold-start"]
         },
         {
