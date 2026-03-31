@@ -101,15 +101,15 @@
             {
               "slug": "s5-injected-failure-detection",
               "name": "S5: Assurance agent detects injected criterion failure",
-              "stage": "branch-complete",
+              "stage": "definition-of-done",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "prStatus": "draft",
+              "dodStatus": "complete",
+              "prStatus": "merged",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/5",
-              "worktree": ".worktrees/s5-injected-failure-detection",
-              "branch": "feature/s5-injected-failure-detection",
-              "updatedAt": "2026-04-01T09:15:00Z",
+              "releaseReady": true,
+              "updatedAt": "2026-04-01T10:00:00Z",
               "testPlan": { "status": "all-passing", "totalTests": 57, "passing": 57, "acTotal": 5, "acVerified": 5 }
             },
             {
