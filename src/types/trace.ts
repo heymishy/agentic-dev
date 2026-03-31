@@ -28,3 +28,15 @@ export interface AssuranceRecord {
   outcome: 'approved' | 'rejected';
   timestamp: string;
 }
+
+export interface ReviewTraceEntry {
+  agentIdentity: 'review';
+  skillName: string;
+  skillVersion: string;
+  promptHash: string;
+  hashAlgorithm: string;
+  devHashMatch: boolean;
+  validationFindings: string[];
+  decisionOutcome: 'proceed-to-quality-review' | 'reject-to-inbox';
+  timestamp: string;
+}
