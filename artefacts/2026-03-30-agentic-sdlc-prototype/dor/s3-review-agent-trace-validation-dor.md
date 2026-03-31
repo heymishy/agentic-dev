@@ -67,6 +67,12 @@ beyond what the tests and ACs specify.
 Constraints:
 - Language: TypeScript strict mode. `tsc --strict --noEmit` must pass at all times.
 - Test framework: Jest.
+- **DL-008 (HARD RULE):** `review-agent.ts` must guard the `main()` call with
+  `if (require.main === module)`. Without this guard, importing `runReviewAgent` in the
+  integration test triggers `main()` at parse time — before `beforeEach` fixtures run —
+  and crashes the Jest worker with ENOENT on `queue/inbox`. Add the guard in the initial
+  file creation step (Task 1), not after integration tests are written. Canonical
+  reference: `src/agents/dev-agent.ts` (commit `924fc5c`). See decisions.md DL-008.
 - AC1 architectural constraint (HARD RULE): review-agent.ts must read the dev trace from
   a file path argument only. It must NOT access any module-level cache, global variable,
   or in-memory state holding a prior trace. The stale-file-replacement integration test

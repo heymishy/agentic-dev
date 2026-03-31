@@ -40,11 +40,15 @@
             {
               "slug": "s2-dev-agent-skill-trace",
               "name": "S2: Dev agent loads skill, self-checks, emits trace",
-              "stage": "verify-completion",
+              "stage": "branch-complete",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "testPlan": { "status": "written", "totalTests": 14, "passing": 14, "acTotal": 6, "acVerified": 6 }
+              "dodStatus": "pending",
+              "prStatus": "draft",
+              "prUrl": "https://github.com/heymishy/agentic-dev/pull/2",
+              "updatedAt": "2026-03-31T07:00:00Z",
+              "testPlan": { "status": "written", "totalTests": 26, "passing": 26, "acTotal": 6, "acVerified": 6 }
             },
             {
               "slug": "s3-review-agent-trace-validation",

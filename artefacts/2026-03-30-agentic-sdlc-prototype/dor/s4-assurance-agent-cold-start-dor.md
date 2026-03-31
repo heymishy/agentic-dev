@@ -67,6 +67,12 @@ independence integration test). Do not add scope beyond tests and ACs.
 Constraints:
 - Language: TypeScript strict mode. `tsc --strict --noEmit` must pass.
 - Test framework: Jest.
+- **DL-008 (HARD RULE):** `assurance-agent.ts` must guard the `main()` call with
+  `if (require.main === module)`. Without this guard, importing `runAssuranceAgent` in the
+  integration test triggers `main()` at parse time — before `beforeEach` fixtures run —
+  and crashes the Jest worker with ENOENT on `queue/inbox`. Add the guard in the initial
+  file creation step (Task 1), not after integration tests are written. Canonical
+  reference: `src/agents/dev-agent.ts` (commit `924fc5c`). See decisions.md DL-008.
 - ADR-001 (HARD RULE): assurance-agent.ts and all its direct imports must contain zero
   import statements referencing dev-agent or review-agent module paths. The no-cross-imports
   NFR test verifies this structurally.
