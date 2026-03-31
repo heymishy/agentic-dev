@@ -9,6 +9,7 @@
 
 | # | Date | Type | Decision summary | Decided by | Linked to |
 |---|------|------|-----------------|------------|-----------|
+| DL-010 | 2026-04-01 | SCOPE | S5 F1 → S6 explicit scope: `criteriaResults` post-hoc manipulation is undetectable by the current hash-only assurance agent. S6 AC3 (tamper-evidence) must explicitly cover this: the chosen mechanism must protect not only trace structure/existence but also the integrity of `criteriaResults` field values after the assurance record is written. Hash-chaining or append-only + checksum. | Hamish | S6 AC3, S5 Finding F1 |
 | DL-009 | 2026-03-31 | DESIGN | Post-S7 evolution sequence: S8 adds Claude API call to dev agent (skill becomes system prompt; trace gains `model_response_hash`); S9 swaps endpoint to Azure AI Foundry (one env var change); S10 adds model calls to review and assurance agents. Governance loop is proved without a model call first to isolate the governance mechanism — the model call lands into a proven container, not an unproven one. | Hamish | S8–S10 (post-prototype) |
 | DL-008 | 2026-03-31 | IMPL | Every agent file must guard `main()` with `require.main === module`. Without the guard, importing the module in a test triggers execution — the agent tries to read the queue at test-import time and crashes the Jest worker. Discovered in S2 when `runDevAgent` was exported and the integration test imported it. S3 `review-agent.ts` and S4 `assurance-agent.ts` must include this guard before integration tests are written. `src/agents/dev-agent.ts` is the canonical reference. | Copilot/Hamish | S2–S4 integration tests |
 | DL-007 | 2026-03-31 | IMPL | Agent scripts must be invoked via `spawnSync` with an explicit args array (not `execSync` with a shell command string). Path spaces in the worktree path cause shell arg splitting. `npx ts-node` incurs cold-start overhead that exceeds Jest's default 5s timeout. Fix: `spawnSync(process.execPath, [TS_NODE_BIN, agentFile, ...args])`. S2–S4 test files must use the same pattern. See S1 integration test for reference. | Copilot/Hamish | S1 integration tests, S2–S4 |
@@ -18,6 +19,32 @@
 | DL-001 | 2026-03-30 | RISK-ACCEPT | S3 AC1 partial gap accepted — "not from session" constraint cannot be disproved by automated test; mitigated by three structural measures in S3 test plan | Hamish | S3 AC1, ADR-001 |
 | DL-002 | 2026-03-30 | DESIGN | S3 hash-before/hash-after NFR test establishes prior coverage for S6 tamper-evidence territory; S6 references S3 rather than duplicating | Hamish | S3 NFR, S6 AC3 |
 | DL-003 | 2026-03-30 | DESIGN | S4/S5 test boundary: S4 covers happy-path and unit-level hash-mismatch precondition; formal injected-failure protocol (M3) is S5's sole ownership | Hamish | S4 Out of Scope, S5 test plan |
+
+---
+
+### DL-010 — S6 scope addition: `criteriaResults` integrity must be covered by tamper-evidence mechanism
+
+**Date:** 2026-04-01
+**Type:** SCOPE
+**Decided by:** Hamish
+**Linked to:** S6 AC3, S5 Finding F1
+
+**Context:**
+S5 Protocol 1 revealed a conceptual gap in the governance claim: the assurance agent verifies that the skill file used to govern a decision was the approved version (hash match), but it does not verify that the `criteriaResults` values in the dev trace were not manipulated after the fact. A sophisticated actor could pass the hash check with an unmodified skill file while falsifying individual criterion results (e.g., flipping `"result": "fail"` to `"result": "pass"` for a specific criterion) without detection.
+
+**Why this matters:**
+The governance claim is not just "the right skill governed this decision" — it is "the right skill governed this decision AND the criteria were applied honestly." If `criteriaResults` can be silently edited after the trace is written, the second half of that claim is not protected. This is a conceptual gap, not just a code issue.
+
+**S6 scope addition:**
+S6 AC3 currently specifies that modification of a prior trace entry is "blocked or produces a detectable inconsistency." This AC must explicitly cover `criteriaResults` field values, not just trace-level structure. The tamper-evidence mechanism chosen in S6 must address the question: if a single field within an existing trace entry's `criteriaResults` array is changed, is that change detectable?
+
+Acceptable mechanisms at prototype level: (a) append-only + per-entry checksum or entry hash stored separately; (b) content-addressing (each entry's hash is computed and committed). The mechanism does not need to be production-grade — prototype-level controls are explicitly permitted by S6's architecture constraints — but it must address this specific threat vector explicitly.
+
+**How S6 story changes:**
+The S6 story's "Out of Scope" section must NOT exclude `criteriaResults` integrity from AC3's scope. The implementation note in AC3 ("tested by manually editing the file content and timestamp") should be read as including editing a `criteriaResults` value, not just deleting or reordering entries.
+
+**What was NOT changed:**
+S6 AC1 (legibility), AC2 (Q1 blocking), AC4 (README), AC5 (tsc clean) are unchanged. This decision adds specificity to AC3, not a new AC.
 
 ---
 

@@ -73,10 +73,13 @@ is an audit trail.
   names and structure are revised and the test is repeated.
 
 **AC3:** Given the trace log contains entries from all three agents, When a prior trace
-  entry (dev or review) is modified after the assurance record has been written (tested
-  by manually editing the file content and timestamp), Then the modification is either
-  blocked by the mechanism or produces a detectable inconsistency that is identified
-  during the next assurance verification run.
+  entry (dev or review) is modified after the assurance record has been written —
+  including modifications to field values within the `criteriaResults` array (e.g.,
+  changing `result: "fail"` to `result: "pass"` for a specific criterion) — Then the
+  modification is either blocked by the mechanism or produces a detectable inconsistency
+  that is identified during the next assurance verification run. The tamper-evidence
+  mechanism must address `criteriaResults` integrity explicitly, not only trace-level
+  structural changes. See DL-010.
 
 **AC4:** Given the tamper-evidence mechanism has been tested per AC3, When the
   mechanism and its limitations are described in the README, Then the description
