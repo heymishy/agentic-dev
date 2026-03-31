@@ -24,8 +24,8 @@ export function loadTraceFromFile(filePath: string): TraceEntry {
   }
   const parsed = JSON.parse(firstLine) as Record<string, unknown>;
   for (const field of REQUIRED_FIELDS) {
-    if (parsed[field as string] === undefined) {
-      throw new Error(`Trace entry missing required field: ${String(field)}`);
+    if (parsed[field] === undefined) {
+      throw new Error(`Trace entry missing required field: ${field}`);
     }
   }
   return parsed as unknown as TraceEntry;

@@ -10,15 +10,18 @@ export interface DevAgentOutput {
   changelogEntry: string | null;
 }
 
-export interface TraceEntry {
-  agentIdentity: string;
+interface BaseAgentTrace {
   skillName: string;
   skillVersion: string;
   promptHash: string;
   hashAlgorithm: string;
+  timestamp: string;
+}
+
+export interface TraceEntry extends BaseAgentTrace {
+  agentIdentity: string;
   criteriaResults: CriterionResult[];
   decisionOutcome: 'proceed' | 'reject';
-  timestamp: string;
 }
 
 // Stub — extended in S4
@@ -29,14 +32,9 @@ export interface AssuranceRecord {
   timestamp: string;
 }
 
-export interface ReviewTraceEntry {
+export interface ReviewTraceEntry extends BaseAgentTrace {
   agentIdentity: 'review';
-  skillName: string;
-  skillVersion: string;
-  promptHash: string;
-  hashAlgorithm: string;
   devHashMatch: boolean;
   validationFindings: string[];
   decisionOutcome: 'proceed-to-quality-review' | 'reject-to-inbox';
-  timestamp: string;
 }

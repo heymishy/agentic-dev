@@ -17,7 +17,7 @@ const VALID_DEV_TRACE: TraceEntry = {
     { criterion: 'HAS_CHANGELOG_ENTRY', result: 'pass' },
   ],
   decisionOutcome: 'proceed',
-  timestamp: new Date().toISOString(),
+  timestamp: '2026-03-30T00:00:00.000Z',
 };
 
 // ── AC1: loadTraceFromFile ───────────────────────────────────────────────────
