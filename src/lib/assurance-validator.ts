@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { computeSkillHash } from './skill-loader';
 
 export interface TraceLogEntry {
   agentIdentity: string;
@@ -37,4 +38,27 @@ export function readTraceLog(filePath: string): TraceLogEntry[] {
     }
     return parsed as unknown as TraceLogEntry;
   });
+}
+
+export function validateDevTrace(
+  devEntry: TraceLogEntry,
+  skillPath: string,
+): { devHashMatch: boolean } {
+  const actualHash = computeSkillHash(skillPath);
+  return { devHashMatch: devEntry.promptHash === actualHash };
+}
+
+export function validateReviewTrace(
+  reviewEntry: TraceLogEntry,
+  devHashMatch: boolean,
+  skillPath: string,
+): { reviewHashMatch: boolean; reviewsDevHashMatch: boolean } {
+  const actualHash = computeSkillHash(skillPath);
+  const reviewHashMatch = reviewEntry.promptHash === actualHash;
+  const reviewRecordedDevHash = reviewEntry['devHashMatch'];
+  const reviewsDevHashMatch =
+    typeof reviewRecordedDevHash === 'boolean'
+      ? reviewRecordedDevHash === devHashMatch
+      : false;
+  return { reviewHashMatch, reviewsDevHashMatch };
 }
