@@ -9,6 +9,7 @@
 
 | # | Date | Type | Decision summary | Decided by | Linked to |
 |---|------|------|-----------------|------------|-----------|
+| DL-008 | 2026-03-31 | IMPL | Every agent file must guard `main()` with `require.main === module`. Without the guard, importing the module in a test triggers execution — the agent tries to read the queue at test-import time and crashes the Jest worker. Discovered in S2 when `runDevAgent` was exported and the integration test imported it. S3 `review-agent.ts` and S4 `assurance-agent.ts` must include this guard before integration tests are written. `src/agents/dev-agent.ts` is the canonical reference. | Copilot/Hamish | S2–S4 integration tests |
 | DL-007 | 2026-03-31 | IMPL | Agent scripts must be invoked via `spawnSync` with an explicit args array (not `execSync` with a shell command string). Path spaces in the worktree path cause shell arg splitting. `npx ts-node` incurs cold-start overhead that exceeds Jest's default 5s timeout. Fix: `spawnSync(process.execPath, [TS_NODE_BIN, agentFile, ...args])`. S2–S4 test files must use the same pattern. See S1 integration test for reference. | Copilot/Hamish | S1 integration tests, S2–S4 |
 | DL-006 | 2026-03-31 | ARCH | Replace Mission Control queue with filesystem queue (folder-based, JSON task files). Foundry is the first real runtime after the prototype — no MC migration step. See ADR-002. | Hamish | ADR-002, S1 all |
 | DL-005 | 2026-03-31 | ACTION | Participant required for S6 AC1 (legibility test) and S7 AC4 (dry-run). Must be named and time-committed before S1 branch is merged. Blocking on S6 and S7 execution — not on S1–S5. | Hamish | S6 W4, S7 W4 |
@@ -16,6 +17,40 @@
 | DL-001 | 2026-03-30 | RISK-ACCEPT | S3 AC1 partial gap accepted — "not from session" constraint cannot be disproved by automated test; mitigated by three structural measures in S3 test plan | Hamish | S3 AC1, ADR-001 |
 | DL-002 | 2026-03-30 | DESIGN | S3 hash-before/hash-after NFR test establishes prior coverage for S6 tamper-evidence territory; S6 references S3 rather than duplicating | Hamish | S3 NFR, S6 AC3 |
 | DL-003 | 2026-03-30 | DESIGN | S4/S5 test boundary: S4 covers happy-path and unit-level hash-mismatch precondition; formal injected-failure protocol (M3) is S5's sole ownership | Hamish | S4 Out of Scope, S5 test plan |
+
+---
+
+### DL-008 — Agent module guard: `require.main === module` required in all agent files
+
+**Date:** 2026-03-31
+**Type:** IMPL
+**Decided by:** Copilot/Hamish
+**Linked to:** S2–S4 integration tests
+
+**Context:**
+During S2 Task 5, when `runDevAgent()` was exported from `src/agents/dev-agent.ts` and the integration test imported it, Jest workers crashed with `ENOENT: no such file or directory, scandir '...\queue\inbox'`. The root cause: `main()` at module level executed at import time — the agent tried to read the queue before the test had set up any fixture directories. Jest hit 4 worker retries and failed the entire suite.
+
+**Pattern:**
+Every agent file (`dev-agent.ts`, `review-agent.ts`, `assurance-agent.ts`) must wrap the `main()` call with a module-execution guard:
+
+```typescript
+if (require.main === module) {
+  main().catch((err: unknown) => {
+    process.stderr.write(String(err) + '\n');
+    process.exit(1);
+  });
+}
+```
+
+Without this guard, any `import { exportedFunction } from '../../src/agents/[agent]'` in a test file will execute `main()` at parse time, before `beforeEach` or `beforeAll` fixtures are set up.
+
+**Why this matters for S3 and S4:**
+S3 `review-agent.ts` will be imported by `s3-review-agent-trace.integration.test.ts` via `import { runReviewAgent } from '../../src/agents/review-agent'`. If the guard is absent, the integration test suite will crash identically to S2 before the guard was applied. S4 `assurance-agent.ts` has the same exposure. The guard is **mandatory**, not optional. It must be included in the initial agent file creation step (Task 1 of the S3 plan and Task 1 of the S4 plan), not discovered during integration test authoring.
+
+**Canonical reference:** `src/agents/dev-agent.ts` (commit `924fc5c`) — see the `if (require.main === module)` block at the end of the file.
+
+**Plan update required:**
+S3 and S4 implementation plans must include an explicit sub-step in the "Create agent file" task: *"Add `require.main === module` guard around `main()` invocation."* The plan reviewer should flag any S3/S4 agent creation step that omits this guard.
 
 ---
 
