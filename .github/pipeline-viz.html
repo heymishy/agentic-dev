@@ -318,6 +318,33 @@
   .pill.fail { background: rgba(239,68,68,.12);  color: var(--red);   border-color: rgba(239,68,68,.3); }
   .pill.none { background: var(--bg); color: var(--muted); border-color: var(--border); }
 
+  /* ── Inner loop story state ────────────────────────────────────── */
+  .story-row-active {
+    border-color: rgba(20,184,166,.5);
+    background: rgba(20,184,166,.06);
+  }
+  .story-row-active .story-name { color: var(--teal); }
+  .story-row-done {
+    opacity: .55;
+  }
+  .story-row-queued {
+    border-color: var(--border);
+    opacity: .75;
+  }
+  /* Inner loop stage progress dots */
+  .inner-stage-dots { display: inline-flex; gap: 2px; align-items: center; flex-shrink: 0; }
+  .inner-stage-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--border); flex-shrink: 0;
+  }
+  .inner-stage-dot.filled  { background: rgba(20,184,166,.5); }
+  .inner-stage-dot.current { background: var(--teal); box-shadow: 0 0 4px rgba(20,184,166,.6); }
+  /* Epic inner loop progress bar */
+  .epic-progress-bar {
+    height: 3px; background: var(--border); border-radius: 2px; margin: 3px 0 1px 18px; overflow: hidden;
+  }
+  .epic-progress-fill { height: 100%; background: var(--teal); border-radius: 2px; transition: width .3s; }
+
   /* ── Empty state ─────────────────────────────────────────────── */
   .empty-state {
     text-align: center; padding: 40px 16px; color: var(--muted);
@@ -1052,6 +1079,26 @@ function normalizeData(data) {
     });
   });
   (data.programmes || []).forEach(p => { p.slug = p.slug || p.id; });
+
+  // Auto-expand: open feature cards, epics, and task lists for any inner loop story
+  // that is currently active (in an inner loop stage but not yet fully committed).
+  // This gives an at-a-glance view of in-progress work without any manual clicks.
+  (data.features || []).forEach(f => {
+    if (loopType(f.stage) !== 'inner') return;
+    let hasActive = false;
+    (f.epics || []).forEach(e => {
+      (e.stories || []).forEach(s => {
+        const state = storyInnerState(s);
+        if (state === 'active') {
+          hasActive = true;
+          const tk = `${f.slug}::${e.slug}::${s.slug}`;
+          if (s.tasks && s.tasks.length > 0) openTaskLists.add(tk);
+          openEpics.add(`${f.slug}::${e.slug}`);
+        }
+      });
+    });
+    if (hasActive) openFeatures.add(f.slug);
+  });
 
   // Apply config.regulated from pipeline-state as the default strict-policy state,
   // but only when there is no explicit user preference already stored in localStorage.
@@ -2106,7 +2153,7 @@ function featureCardHTML(f) {
           <span class="next-action-age">${formatAge(featureAgeMinutes(f))}</span>
         </div>
       </div>
-      ${stageArts.length > 0 ? `<div class="card-artefacts"><span class="label">Docs</span>${stageArts.map(a => `<a class="drawer-link" href="${esc(a.path)}">${esc(a.label)}</a>`).join('')}</div>` : ''}
+      ${stageArts.length > 0 && loopType(f.stage) !== 'inner' ? `<div class="card-artefacts"><span class="label">Docs</span>${stageArts.map(a => `<a class="drawer-link" href="${esc(a.path)}">${esc(a.label)}</a>`).join('')}</div>` : ''}
       <div class="meta">
         ${loopStageBadge(f.stage)}
         ${metaStageBadge(f.stage)}
@@ -2180,14 +2227,27 @@ function epicRowHTML(featureSlug, epic) {
   const key    = `${featureSlug}::${epic.slug}`;
   const isOpen = openEpics.has(key);
   const stories = epic.stories || [];
+  const doneCount   = stories.filter(s => storyInnerState(s) === 'done').length;
+  const activeCount = stories.filter(s => storyInnerState(s) === 'active').length;
+  const progressPct = stories.length > 0 ? Math.round((doneCount / stories.length) * 100) : 0;
+  const progressBar = stories.length > 0 && (doneCount > 0 || activeCount > 0)
+    ? `<div class="epic-progress-bar"><div class="epic-progress-fill" style="width:${progressPct}%"></div></div>` : '';
+  const summaryTag  = stories.length > 0
+    ? (doneCount === stories.length
+        ? `<span style="font-size:9px;color:var(--teal);flex-shrink:0">✓ all done</span>`
+        : activeCount > 0
+          ? `<span style="font-size:9px;color:var(--muted);flex-shrink:0">${doneCount}/${stories.length} done · ${activeCount} active</span>`
+          : `<span style="font-size:9px;color:var(--muted);flex-shrink:0">${stories.length}</span>`)
+    : `<span style="font-size:10px;color:var(--muted)">${stories.length}</span>`;
   return `
   <div class="epic-row" data-epic-key="${key}">
     <div class="epic-row-header" data-action="toggle-epic" data-key="${key}">
       <span class="epic-toggle ${isOpen ? 'open' : ''}">▶</span>
       <span class="epic-status-dot status-${epic.status}"></span>
       <span class="epic-name">${esc(epic.name || epic.slug)}</span>
-      <span style="font-size:10px;color:var(--muted)">${stories.length}</span>
+      ${summaryTag}
     </div>
+    ${progressBar}
     <div class="story-list ${isOpen ? 'open' : ''}">
       ${stories.length > 0 ? stories.map(s => storyRowHTML(featureSlug, epic.slug, s)).join('') : '<div style="font-size:11px;color:var(--muted);padding:2px 0">No stories</div>'}
     </div>
@@ -2200,6 +2260,12 @@ function storyRowHTML(featureSlug, epicSlug, story) {
   const acPct  = story.acTotal > 0 ? Math.round((story.acVerified / story.acTotal) * 100) : null;
   const testPct = story.testPlan && story.testPlan.totalTests > 0
     ? Math.round((story.testPlan.passing / story.testPlan.totalTests) * 100) : null;
+
+  const innerState = storyInnerState(story);
+  const stateCls   = INNER_LOOP_STAGES.has(story.stage || '') || innerState !== 'queued'
+    ? `story-row-${innerState}` : '';
+
+  const stageDots = INNER_LOOP_STAGES.has(story.stage || '') ? innerStageDotsHTML(story.stage) : '';
 
   const pills = [
     story.reviewStatus === 'passed'       ? `<span class="pill ok">Review ✓</span>` :
@@ -2219,10 +2285,11 @@ function storyRowHTML(featureSlug, epicSlug, story) {
   ].filter(Boolean).join('');
 
   return `
-  <div class="story-row" data-story-key="${key}">
+  <div class="story-row ${stateCls}" data-story-key="${key}">
     <div class="story-row-top" data-action="open-story" data-story-key="${key}">
       <div class="story-health" style="background:${healthColour(story.health)}"></div>
       <span class="story-name">${esc(story.name||story.title||story.slug)}</span>
+      ${stageDots}
       <span class="story-stage-badge">${stageLabel(story.stage)}</span>
     </div>
     ${taskListInlineHTML(story, key)}
@@ -3477,6 +3544,27 @@ const TDD_META = {
 function tddBadgeHTML(state, extraCls = 'tdd-badge') {
   const m = TDD_META[state] || TDD_META['not-started'];
   return `<span class="${extraCls} ${m.cls}">${m.label}</span>`;
+}
+
+// Classify a story for inner-loop visual state: 'done' | 'active' | 'queued'
+function storyInnerState(story) {
+  const s = story.stage || '';
+  if (
+    story.dodStatus === 'complete' || s === 'branch-complete' ||
+    (story.tasks && story.tasks.length > 0 && story.tasks.every(t => t.tddState === 'committed'))
+  ) return 'done';
+  if (INNER_LOOP_STAGES.has(s)) return 'active';
+  return 'queued';
+}
+
+// 6-dot progress indicator for inner loop stages
+function innerStageDotsHTML(storyStage) {
+  const idx = INNER_LOOP_STAGE_ORDER.indexOf(storyStage || '');
+  if (idx === -1) return '';
+  const dots = INNER_LOOP_STAGE_ORDER.map((_, i) =>
+    `<span class="inner-stage-dot ${i < idx ? 'filled' : i === idx ? 'current' : ''}"></span>`
+  ).join('');
+  return `<span class="inner-stage-dots" title="${esc(stageLabel(storyStage))}">${dots}</span>`;
 }
 
 function taskCommittedPct(story) {

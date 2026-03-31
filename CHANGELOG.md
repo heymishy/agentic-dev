@@ -6,6 +6,26 @@ All notable changes to this repository will be documented in this file.
 
 ---
 
+## [0.5.8] — 2026-03-31
+
+### Improved
+
+#### Pipeline viz: inner loop UX — story state distinction, stage progress dots, epic summary bar, auto-expand
+
+Five improvements to the inner loop visualisation:
+
+**Story state distinction.** Stories in a feature card now carry a visual state class: `story-row-active` (teal border + tinted background, story name highlighted) for stories currently being executed; `story-row-done` (reduced opacity) for completed stories; `story-row-queued` (muted) for stories waiting at definition-of-ready. Active work is immediately scannable without hunting through a uniform list.
+
+**Inner loop stage progress dots.** Each story in an inner loop stage now shows a row of 6 dots next to its stage badge, representing the six inner loop stages (branch-setup → implementation-plan → execution → impl-review → verify → branch-complete). Filled dots show completed stages; the current stage dot pulses teal. This gives spatial context at a glance — users can see both where a story is and how far it has to go.
+
+**Epic progress summary.** The epic header now shows a summary line — "N/M done · K active" when in progress, "✓ all done" when complete — and a 3px teal progress bar below the header row. No need to expand an epic to judge its status.
+
+**Docs section hidden in inner loop cards.** The "Docs" section in feature cards listed outer-loop artefact links (story files, test plans, DoR). In inner loop stages these are redundant — the same links are accessible from each story row via the drawer. Hiding them reduces noise and makes the task-level content the primary focus of the card.
+
+**Active stories auto-expanded on load.** When state data is loaded, any inner loop feature with active stories automatically opens: the feature card, the containing epic, and the task list for each active story. No manual clicking required to see what's currently in flight.
+
+---
+
 ## [0.5.7] — 2026-03-31
 
 ### Fixed
