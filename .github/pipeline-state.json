@@ -7,12 +7,12 @@
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
       "track": "standard",
-      "stage": "branch-setup",
+      "stage": "implementation-plan",
       "health": "green",
-      "updatedAt": "2026-03-31T09:00:00Z",
+      "updatedAt": "2026-03-31T09:15:00Z",
       "worktree": ".worktrees/s3-review-agent-trace-validation",
       "branch": "feature/s3-review-agent-trace-validation",
-      "activePlan": null,
+      "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md",
       "releaseReady": false,
       "epics": [
         {
@@ -55,11 +55,17 @@
             {
               "slug": "s3-review-agent-trace-validation",
               "name": "S3: Review agent validates dev trace and emits its own trace",
-              "stage": "branch-setup",
+              "stage": "implementation-plan",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "testPlan": { "status": "written", "totalTests": 11, "passing": 0, "acTotal": 5, "acVerified": 0 }
+              "testPlan": { "status": "written", "totalTests": 15, "passing": 0, "acTotal": 5, "acVerified": 0 },
+              "tasks": [
+                { "id": "task-1", "name": "ReviewTraceEntry type + trace-reader + AC1 unit tests", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md" },
+                { "id": "task-2", "name": "review-validator verifyDevTraceHash + validateCriteriaCompleteness (AC2, AC3)", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md" },
+                { "id": "task-3", "name": "buildReviewTraceEntry + emitReviewTraceEntry + review fixture (AC4, AC5)", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md" },
+                { "id": "task-4", "name": "review-agent.ts + integration + NFR tests (AC1-AC5 full)", "tddState": "not-started", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md" }
+              ]
             },
             {
               "slug": "s4-assurance-agent-cold-start",
