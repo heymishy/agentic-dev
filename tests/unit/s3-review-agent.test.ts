@@ -4,8 +4,8 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { loadTraceFromFile } from '../../src/lib/trace-reader';
-import { verifyDevTraceHash, validateCriteriaCompleteness } from '../../src/lib/review-validator';
-import { CriterionResult, TraceEntry } from '../../src/types/trace';
+import { verifyDevTraceHash, validateCriteriaCompleteness, buildReviewTraceEntry } from '../../src/lib/review-validator';
+import { CriterionResult, ReviewTraceEntry, TraceEntry } from '../../src/types/trace';
 
 const VALID_DEV_TRACE: TraceEntry = {
   agentIdentity: 'dev',
@@ -106,5 +106,56 @@ describe('validateCriteriaCompleteness', () => {
 
     expect(findings).toHaveLength(1);
     expect(findings[0]).toContain('HAS_CHANGELOG_ENTRY');
+  });
+});
+
+// ── AC4 + AC5: buildReviewTraceEntry ────────────────────────────────────────
+
+describe('buildReviewTraceEntry', () => {
+  const BASE_PARAMS = {
+    agentIdentity: 'review' as const,
+    skillName: 'feature-review',
+    skillVersion: '1.0.0',
+    promptHash: 'a'.repeat(64),
+    hashAlgorithm: 'sha256',
+  };
+
+  test('produces entry with all required fields on happy path (AC4)', () => {
+    const entry: ReviewTraceEntry = buildReviewTraceEntry({
+      ...BASE_PARAMS,
+      devHashMatch: true,
+      validationFindings: [],
+      decisionOutcome: 'proceed-to-quality-review',
+    });
+
+    expect(entry.agentIdentity).toBe('review');
+    expect(entry.skillName).toBe('feature-review');
+    expect(typeof entry.skillVersion).toBe('string');
+    expect(typeof entry.promptHash).toBe('string');
+    expect(entry.hashAlgorithm).toBe('sha256');
+    expect(entry.devHashMatch).toBe(true);
+    expect(Array.isArray(entry.validationFindings)).toBe(true);
+    expect(entry.decisionOutcome).toBe('proceed-to-quality-review');
+    expect(new Date(entry.timestamp).toISOString()).toBe(entry.timestamp);
+  });
+
+  test('sets reject-to-inbox and references hash mismatch in validationFindings (AC5)', () => {
+    const mismatchFinding =
+      'Hash mismatch: dev trace promptHash does not match current feature-dev SKILL.md on disk';
+
+    const entry: ReviewTraceEntry = buildReviewTraceEntry({
+      ...BASE_PARAMS,
+      devHashMatch: false,
+      validationFindings: [mismatchFinding],
+      decisionOutcome: 'reject-to-inbox',
+    });
+
+    expect(entry.decisionOutcome).toBe('reject-to-inbox');
+    expect(entry.devHashMatch).toBe(false);
+    expect(
+      entry.validationFindings.some(
+        f => f.toLowerCase().includes('hash') || f.toLowerCase().includes('prompthash'),
+      ),
+    ).toBe(true);
   });
 });

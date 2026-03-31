@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 
-import { CriterionResult, TraceEntry } from '../types/trace';
+import { CriterionResult, ReviewTraceEntry, TraceEntry } from '../types/trace';
 
 export function verifyDevTraceHash(
   devTrace: TraceEntry,
@@ -20,4 +20,21 @@ export function validateCriteriaCompleteness(
   return skillCriteria
     .filter(c => !coveredCriteria.has(c))
     .map(c => `Missing criterion: ${c}`);
+}
+
+export function buildReviewTraceEntry(params: {
+  agentIdentity: 'review';
+  skillName: string;
+  skillVersion: string;
+  promptHash: string;
+  hashAlgorithm: string;
+  devHashMatch: boolean;
+  validationFindings: string[];
+  decisionOutcome: 'proceed-to-quality-review' | 'reject-to-inbox';
+}): ReviewTraceEntry {
+  return { ...params, timestamp: new Date().toISOString() };
+}
+
+export function emitReviewTraceEntry(tracePath: string, entry: ReviewTraceEntry): void {
+  fs.appendFileSync(tracePath, JSON.stringify(entry) + '\n', 'utf-8');
 }
