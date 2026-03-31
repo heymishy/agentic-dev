@@ -7,12 +7,12 @@
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
       "track": "standard",
-      "stage": "branch-complete",
+      "stage": "definition-of-done",
       "health": "green",
-      "updatedAt": "2026-03-31T08:00:00Z",
-      "worktree": ".worktrees/s2-dev-agent-skill-trace",
-      "branch": "feature/s2-dev-agent-skill-trace",
-      "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s2-dev-agent-skill-trace-plan.md",
+      "updatedAt": "2026-03-31T08:30:00Z",
+      "worktree": null,
+      "branch": null,
+      "activePlan": null,
       "releaseReady": false,
       "epics": [
         {
@@ -45,11 +45,12 @@
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "dodStatus": "not-started",
-              "prStatus": "draft",
+              "dodStatus": "complete",
+              "prStatus": "merged",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/2",
-              "updatedAt": "2026-03-31T07:00:00Z",
-              "testPlan": { "status": "written", "totalTests": 26, "passing": 26, "acTotal": 6, "acVerified": 6 }
+              "updatedAt": "2026-03-31T08:30:00Z",
+              "releaseReady": true,
+              "testPlan": { "status": "all-passing", "totalTests": 26, "passing": 26, "acTotal": 6, "acVerified": 6 }
             },
             {
               "slug": "s3-review-agent-trace-validation",
@@ -132,9 +133,9 @@
           "name": "Per-decision traceability to versioned skill",
           "target": "100% of trace entries contain skill name, version, and resolvable prompt hash",
           "baseline": "0% — no trace entries exist",
-          "signal": "not-yet-measured",
-          "lastMeasured": null,
-          "evidence": null,
+          "signal": "at-risk",
+          "lastMeasured": "2026-03-31",
+          "evidence": "Dev agent leg complete: SHA-256 promptHash 2aa389817ba2dd0f376f7a14344ec5e1d21d418a1696b4e099f3a53dd21eb19a independently verified from two sources (live compute + stored fixture). 1/3 agents instrumented. S3 and S4 required for full M2 coverage.",
           "contributingStories": ["s2-dev-agent-skill-trace", "s3-review-agent-trace-validation", "s4-assurance-agent-cold-start"]
         },
         {
