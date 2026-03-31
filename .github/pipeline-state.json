@@ -72,12 +72,12 @@
             {
               "slug": "s4-assurance-agent-cold-start",
               "name": "S4: Assurance agent runs cold-start, validates both traces",
-              "stage": "subagent-execution",
+              "stage": "verify-completion",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "updatedAt": "2026-03-31T12:30:00Z",
-              "testPlan": { "status": "all-passing", "totalTests": 16, "passing": 16, "acTotal": 5, "acVerified": 5 },
+              "updatedAt": "2026-04-01T07:00:00Z",
+              "testPlan": { "status": "all-passing", "totalTests": 57, "passing": 57, "acTotal": 5, "acVerified": 5 },
               "tasks": [
                 { "id": "task-1", "name": "AssuranceRecord type + readTraceLog (AC1)", "tddState": "committed" },
                 { "id": "task-2", "name": "validateDevTrace + validateReviewTrace (AC2, AC3)", "tddState": "committed" },
