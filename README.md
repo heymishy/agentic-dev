@@ -815,6 +815,20 @@ This creates all skill files, templates, the instruction file, and the artefacts
 
 ---
 
+## Cold-start independence
+
+Each agent in the quality loop — dev, review, and assurance — runs as a separate Node.js process invocation. No agent shares module-level state, conversation context, or execution environment with any other agent. The only artefact that flows between agents is the append-only trace log file on the local filesystem.
+
+The assurance agent enforces this boundary explicitly:
+
+1. **Import-level isolation.** `assurance-agent.ts` has zero imports from `dev-agent.ts` or `review-agent.ts`. An automated test asserts this at build time.
+2. **Filesystem-only input.** The assurance agent reads the trace log file path from a command-line argument and loads both prior trace entries from disk on every invocation. It holds no cached or module-level copy of any prior agent's output.
+3. **Independent hash computation.** The assurance agent loads `feature-dev` and `feature-review` SKILL.md files directly from the filesystem and computes SHA-256 hashes independently. It does not reuse hashes recorded by any prior agent.
+
+This design means the assurance record's cryptographic claims are independently verifiable: the same versioned policy documents that governed the original decisions also governed the validation of those decisions. A reviewer can confirm this by inspecting the assurance agent's source and running the no-cross-imports test and cold-start integration test.
+
+---
+
 ## Repo structure
 
 ```
