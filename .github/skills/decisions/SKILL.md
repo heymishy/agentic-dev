@@ -194,6 +194,7 @@ skills, the decision point is marked - invoke /decisions at that point:
 | /discovery | MVP scope finalised | SCOPE |
 | /discovery | Item moved to out-of-scope | SCOPE |
 | /benefit-metric | Meta-benefit flag set | ASSUMPTION |
+| /clarify | Assumption added or materially changed during clarification | ASSUMPTION |
 | /definition | Slicing strategy chosen | SLICE |
 | /definition | Scope note resolved (add/defer/replace) | SCOPE |
 | /definition | Scope accumulator flags drift - decision made | SCOPE |

@@ -216,9 +216,24 @@ Step  Skill                  Entry condition                   Exit condition
 9     /trace                 On-demand or CI trigger           Chain health reported
 ```
 
-**Note:** `/clarify` is optional but recommended when a discovery artefact is vague,
-scope is unclear, or the team disagrees on MVP boundary. Safe to run multiple times.
-Runs within Step 1 — does not advance the pipeline stage on its own.
+**`/clarify` routing:** When a feature is at the `discovery` stage, check the discovery artefact for these thinness signals before routing to `/benefit-metric`:
+- Assumptions section is empty or contains fewer than 2 entries
+- Out of scope section has fewer than 2 explicit items
+- MVP scope contains words like "all", "everything", "full", "complete", or "phase 1"
+- Status is `Draft` (not `Clarified` or `Approved`)
+
+If any signal is present:
+> ⚠️ **Run /clarify before proceeding to /benefit-metric.**
+> The discovery artefact has thinness signals: [list which ones].
+> /clarify will ask the highest-value open questions and strengthen the artefact.
+>
+> Ready to run /clarify? Reply: yes — or skip with acknowledged risk
+
+If skipped with acknowledged risk, log in /decisions (category: RISK-ACCEPT).
+
+If no signals present, route directly to `/benefit-metric`.
+
+Safe to run multiple times. Runs within Step 1 — does not advance the pipeline stage on its own.
 
 **Support skills available throughout the inner loop:**
 `/tdd` — RED-GREEN-REFACTOR enforcement per task

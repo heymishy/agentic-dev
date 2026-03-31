@@ -223,14 +223,30 @@ After producing the artefact:
 
 > **Discovery draft complete ✅**
 >
-> Before moving to /benefit-metric, a human should review and approve this -
-> particularly the MVP scope and out-of-scope sections.
+> Before approving and moving to /benefit-metric, run **/clarify** to sharpen the artefact.
+> /clarify identifies the highest-value open questions across scope, integration, constraints,
+> and user journey — and asks them one at a time.
 >
-> When approved: update the Status field to "Approved" and note who approved
-> it and when. The /benefit-metric skill checks for this before proceeding.
+> **Why not skip it?**
+> Vague scope = scope drift in /definition. Undocumented assumptions = rework in /review.
+> /clarify is the cheapest place to resolve both.
 >
-> Ready to review it now, or come back to it?
-> Reply: review now â€” or done for this session
+> How do you want to proceed?
+> 1. Run /clarify now (recommended)
+> 2. Review and approve without /clarify — skip to sign-off
+>
+> Reply: 1 or 2
+
+If option 2:
+> **Skipping /clarify.** Before approving, confirm the artefact meets these quality checks:
+> - Out of scope has at least 2 explicit items with reasons
+> - Assumptions are genuine uncertainties, not facts
+> - Success indicators are observable
+>
+> When approved: update the Status field to "Approved" and note who approved it and when.
+> The /benefit-metric skill checks for this before proceeding.
+>
+> Reply: approved — [your name], [date]
 
 ---
 

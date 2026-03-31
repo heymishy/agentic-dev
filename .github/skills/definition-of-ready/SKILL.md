@@ -158,9 +158,11 @@ If any warnings apply, surface them one at a time:
 >
 > How do you want to handle this?
 > 1. Resolve it now before proceeding
-> 2. Acknowledge the risk and proceed (I'll log it in /decisions)
+> 2. Acknowledge the risk and proceed — I'll invoke /decisions to log it
 >
 > Reply: 1 or 2
+
+If the user chooses option 2, immediately invoke /decisions to log the RISK-ACCEPT entry before continuing to the next check. Do not defer the log until the end of the run.
 
 ---
 
@@ -239,10 +241,15 @@ Save the approved Contract Proposal to `artefacts/[feature]/dor/[story-slug]-dor
 > Warnings: [n] acknowledged / [n] resolved
 > Oversight: [Low / Medium / High]
 >
+> [If any warnings were acknowledged during this run:]
+> ⚠️ **Outstanding decisions to log** — run /decisions now to record the RISK-ACCEPTs above before starting the inner loop.
+> Reply: done - or run /decisions for me
+
 > [If Low:]
 > Assign the story to the coding agent using the instructions block in the DoR artefact.
 >
 > **Inner coding loop order:**
+> 0. /decisions — log any RISK-ACCEPTs from this DoR run (if not already done above)
 > 1. /branch-setup - create isolated worktree, verify clean baseline
 > 2. /implementation-plan - write bite-sized task plan from this DoR
 > 3. /subagent-execution (recommended) or /tdd per task

@@ -892,6 +892,8 @@
       <div class="fmt-sep"></div>
       <button class="fmt-btn" data-fmt="link"      title="Link">🔗 Link</button>
       <button class="fmt-btn" data-fmt="hr"        title="Horizontal rule">— Rule</button>
+      <div class="fmt-sep"></div>
+      <button class="fmt-btn" data-fmt="reflow"    title="Join hard-wrapped paragraph lines into single lines">⇥ Reflow</button>
     </div>
     <textarea id="md-editor" spellcheck="false"></textarea>
     <div id="md-form"></div>
@@ -2969,6 +2971,26 @@ function initFilters() {
       case 'codeblock': insert = `\n\`\`\`\n${sel||'code'}\n\`\`\`\n`; break;
       case 'link':      insert = `[${sel||'label'}](url)`;       break;
       case 'hr':        insert = `\n---\n`;                      break;
+      case 'reflow': {
+        // Join hard-wrapped paragraph lines; leave headings, lists, fences, tables alone
+        const blocks = ta.value.split(/\n{2,}/);
+        const out = blocks.map(b => {
+          const t = b.trim();
+          if (!t) return '';
+          if (/^```[\s\S]*```$/.test(t)) return b;                          // fenced (inline)
+          if (t.startsWith('```')) return b;                                // fence start
+          if (t.split('\n').some(l => /^(#|>|\||\s{4}|\t|```|-{3,}|\*{3,}|_{3,})/.test(l))) return b;
+          if (t.split('\n').every(l => /^[-*+]|^\d+\./.test(l.trim()))) return b; // list
+          return t.replace(/([^\n])\n([^\n])/g, '$1 $2');
+        });
+        ta.value = out.join('\n\n');
+        ta.selectionStart = ta.selectionEnd = 0;
+        mdDraftText = ta.value;
+        ta.focus();
+        renderMdStatus();
+        renderValidation();
+        return;
+      }
       default: return;
     }
     ta.value = before + insert + after;

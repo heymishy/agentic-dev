@@ -175,7 +175,18 @@ If all questions are resolved:
 >
 > Sections updated: [list]
 > Status: Clarified
+
+Check whether any assumptions were **added or materially changed** during this session.
+If yes:
+
+> ⚠️ **New or revised assumptions recorded.** Run /decisions to log them before proceeding.
+> Category: ASSUMPTION
+> These are the assumptions that changed: [list]
 >
+> Log them now? Reply: yes — and I'll invoke /decisions / no — proceed to /benefit-metric
+
+If no assumptions changed:
+
 > Reply: approve and proceed to /benefit-metric
 
 ---
