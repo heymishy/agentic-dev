@@ -6,12 +6,12 @@
     {
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
-      "stage": "branch-setup",
+      "stage": "implementation-plan",
       "health": "green",
-      "updatedAt": "2026-03-31T06:30:00Z",
+      "updatedAt": "2026-03-31T07:00:00Z",
       "worktree": ".worktrees/s2-dev-agent-skill-trace",
       "branch": "feature/s2-dev-agent-skill-trace",
-      "activePlan": null,
+      "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s2-dev-agent-skill-trace-plan.md",
       "releaseReady": false,
       "epics": [
         {
