@@ -9,6 +9,7 @@
 
 | # | Date | Type | Decision summary | Decided by | Linked to |
 |---|------|------|-----------------|------------|-----------|
+| DL-009 | 2026-03-31 | DESIGN | Post-S7 evolution sequence: S8 adds Claude API call to dev agent (skill becomes system prompt; trace gains `model_response_hash`); S9 swaps endpoint to Azure AI Foundry (one env var change); S10 adds model calls to review and assurance agents. Governance loop is proved without a model call first to isolate the governance mechanism — the model call lands into a proven container, not an unproven one. | Hamish | S8–S10 (post-prototype) |
 | DL-008 | 2026-03-31 | IMPL | Every agent file must guard `main()` with `require.main === module`. Without the guard, importing the module in a test triggers execution — the agent tries to read the queue at test-import time and crashes the Jest worker. Discovered in S2 when `runDevAgent` was exported and the integration test imported it. S3 `review-agent.ts` and S4 `assurance-agent.ts` must include this guard before integration tests are written. `src/agents/dev-agent.ts` is the canonical reference. | Copilot/Hamish | S2–S4 integration tests |
 | DL-007 | 2026-03-31 | IMPL | Agent scripts must be invoked via `spawnSync` with an explicit args array (not `execSync` with a shell command string). Path spaces in the worktree path cause shell arg splitting. `npx ts-node` incurs cold-start overhead that exceeds Jest's default 5s timeout. Fix: `spawnSync(process.execPath, [TS_NODE_BIN, agentFile, ...args])`. S2–S4 test files must use the same pattern. See S1 integration test for reference. | Copilot/Hamish | S1 integration tests, S2–S4 |
 | DL-006 | 2026-03-31 | ARCH | Replace Mission Control queue with filesystem queue (folder-based, JSON task files). Foundry is the first real runtime after the prototype — no MC migration step. See ADR-002. | Hamish | ADR-002, S1 all |
@@ -17,6 +18,35 @@
 | DL-001 | 2026-03-30 | RISK-ACCEPT | S3 AC1 partial gap accepted — "not from session" constraint cannot be disproved by automated test; mitigated by three structural measures in S3 test plan | Hamish | S3 AC1, ADR-001 |
 | DL-002 | 2026-03-30 | DESIGN | S3 hash-before/hash-after NFR test establishes prior coverage for S6 tamper-evidence territory; S6 references S3 rather than duplicating | Hamish | S3 NFR, S6 AC3 |
 | DL-003 | 2026-03-30 | DESIGN | S4/S5 test boundary: S4 covers happy-path and unit-level hash-mismatch precondition; formal injected-failure protocol (M3) is S5's sole ownership | Hamish | S4 Out of Scope, S5 test plan |
+
+---
+
+### DL-009 — Post-S7 evolution sequence: model call is additive, not foundational
+
+**Date:** 2026-03-31
+**Type:** DESIGN
+**Decided by:** Hamish
+**Linked to:** S8–S10 (post-prototype)
+
+**Context:**
+After S7 the governance loop is proved end-to-end without any model call. Human performs the work between agent invocations. The trace infrastructure, hash verification, criteria evaluation, and assurance independence are all evidenced before a model touches the loop. This is a deliberate sequencing choice — it isolates the governance mechanism from the model's behaviour so the two layers can be debugged independently.
+
+**Decided sequence:**
+
+**S8 — Model call added to dev agent (direct Anthropic API)**
+The dev agent calls Claude Sonnet via the Anthropic API. The skill (`feature-dev` SKILL.md) becomes the system prompt. The task file content becomes the user message. The model response is what the criteria are evaluated against. The trace gains a `model_response_hash` field alongside `prompt_hash`. At this point the governance claim is complete: policy governed the model call, output was evaluated against the same policy, trace proves both. Runs locally with an Anthropic API key. No Azure required. Cost for prototype-scale usage is negligible.
+
+**S9 — Swap endpoint to Azure AI Foundry**
+One environment variable change. Same code, same skill, same trace schema. Now running against Claude Sonnet or Opus hosted in Azure. Cost tracking via Azure Cost Management. Enterprise auth via managed identity when moving to Westpac context. This is the step that makes the prototype directly portable to an enterprise environment — the model is the same, the governance infrastructure is the same, the only change is where the API call goes.
+
+**S10 — Review and assurance agents get model calls (optional)**
+Review and assurance agents are currently deterministic rule checkers. Adding model calls is optional — the governance claim does not require it — but it enables handling of ambiguous criteria. The assurance agent calling a model to reason about a complex criterion, while still emitting a cryptographically verifiable trace, is the more sophisticated version of what the prototype demonstrates.
+
+**Why this sequencing is right:**
+Proving the governance loop without a model call first isolates the governance mechanism from the model's behaviour. If the loop doesn't work without a model it won't work with one. If it works without a model, adding one is additive. By the time the Claude API call is added in S8, the trace infrastructure is correct, hash verification works, the assurance agent is genuinely independent, and the criteria are falsifiable. The model call lands into a proven container rather than an unproven one.
+
+**Impact on current work:**
+No changes to S3–S7 scope. This decision is a forward reference only. S8 story definition begins after S7 DoD is complete.
 
 ---
 
