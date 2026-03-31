@@ -101,10 +101,13 @@
             {
               "slug": "s5-injected-failure-detection",
               "name": "S5: Assurance agent detects injected criterion failure",
-              "stage": "definition-of-ready",
+              "stage": "branch-setup",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
+              "worktree": ".worktrees/s5-injected-failure-detection",
+              "branch": "feature/s5-injected-failure-detection",
+              "updatedAt": "2026-04-01T08:30:00Z",
               "testPlan": { "status": "written", "totalTests": 0, "passing": 0, "acTotal": 5, "acVerified": 0 }
             },
             {
@@ -164,9 +167,9 @@
           "name": "Assurance agent detects injected criterion failure",
           "target": "1/1 injected failures detected; 0 false positives on clean run",
           "baseline": "Not measurable — system does not exist",
-          "signal": "not-yet-measured",
-          "lastMeasured": null,
-          "evidence": "S4 cold-start integration test confirms tampered dev hash produces verdict:'escalate' and devHashMatch:false — detection mechanism proven. Formal M3 measurement (deliberate criterion injection) is S5 scope and has not yet run.",
+          "signal": "on-track",
+          "lastMeasured": "2026-04-01",
+          "evidence": "S5 Protocol 1 PASS: injected hash mismatch → verdict escalate, DEV_TRACE_VERIFIED named with reason. S5 Protocol 2 PASS: clean trace → verdict closed, no false positive. Results in verification/m3-test-results.md. M3 target (1/1 injected failure detected, 0 false positives) met.",
           "contributingStories": ["s4-assurance-agent-cold-start", "s5-injected-failure-detection"]
         },
         {
