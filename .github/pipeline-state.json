@@ -7,12 +7,9 @@
       "slug": "2026-03-30-agentic-sdlc-prototype",
       "name": "Agentic SDLC Prototype — Policy-as-Prompt Governance",
       "track": "standard",
-      "stage": "implementation-plan",
+      "stage": "branch-complete",
       "health": "green",
-      "updatedAt": "2026-03-31T09:15:00Z",
-      "worktree": ".worktrees/s3-review-agent-trace-validation",
-      "branch": "feature/s3-review-agent-trace-validation",
-      "activePlan": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md",
+      "updatedAt": "2026-04-01T00:00:00Z",
       "releaseReady": false,
       "epics": [
         {
@@ -55,10 +52,13 @@
             {
               "slug": "s3-review-agent-trace-validation",
               "name": "S3: Review agent validates dev trace and emits its own trace",
-              "stage": "verify-completion",
+              "stage": "branch-complete",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
+              "prStatus": "draft",
+              "prUrl": "https://github.com/heymishy/agentic-dev/pull/3",
+              "updatedAt": "2026-04-01T00:00:00Z",
               "testPlan": { "status": "all-passing", "totalTests": 15, "passing": 15, "acTotal": 5, "acVerified": 5 },
               "tasks": [
                 { "id": "task-1", "name": "ReviewTraceEntry type + trace-reader + AC1 unit tests", "tddState": "committed", "file": "artefacts/2026-03-30-agentic-sdlc-prototype/plans/s3-review-agent-trace-validation-plan.md" },
