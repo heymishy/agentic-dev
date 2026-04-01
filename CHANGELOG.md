@@ -6,6 +6,39 @@ All notable changes to this repository will be documented in this file.
 
 ---
 
+## [0.5.17] — 2026-04-02
+
+### Added
+
+#### Guardrails compliance matrix
+
+A new sub-panel in the governance view showing per-feature compliance with individual guardrails, ADRs, patterns, anti-patterns, NFRs, and compliance framework items.
+
+**Data layer:**
+- `pipeline-state.schema.json` — added `guardrails[]` array on feature objects with fields: `id`, `category` (mandatory-constraint, adr, nfr, compliance-framework, pattern, anti-pattern), `label`, `status` (met, not-met, na, excepted, not-assessed), `evidence`, `exception`, `assessedBy`, `assessedAt`
+- `architecture-guardrails.md` — added `Guardrails Registry` section with a parseable `yaml guardrails-registry` fenced code block containing 24 entries (12 mandatory constraints, 4 ADRs, 5 patterns, 6 anti-patterns — matches existing guardrails document)
+- `templates/architecture-guardrails.md` — added template version of the registry with example entries
+
+**Visualiser (`pipeline-viz.html`):**
+- "Guardrails" toggle button in governance controls — opens/collapses the compliance matrix
+- Registry fetch: parses the `yaml guardrails-registry` block from `architecture-guardrails.md` at runtime (no build step, consistent with ADR-001)
+- Dynamic items: NFR and compliance-framework guardrails from `feature.guardrails[]` and `config.governance.complianceFrameworks` appear automatically — not in the static registry
+- Table: rows grouped by section, columns per feature, status badges (met ✓ / not-met ✗ / N/A · / excepted ⚠ / not-assessed ?)
+- Category filter pills to narrow by guardrail type
+- Summary counters (met, not-met, excepted, N/A, not-assessed)
+- CSV export of the full guardrails compliance matrix
+
+**Skills updated to write `feature.guardrails[]` state:**
+- `/review` — writes guardrail entries after Category E evaluation (met/not-met based on findings)
+- `/definition` — seeds `guardrails[]` with not-assessed entries from the registry at story creation time
+- `/definition-of-ready` — updates guardrail entries from H9 and H-NFR/H-NFR2/H-NFR3 checks
+- `/definition-of-done` — updates NFR guardrail entries from Step 5 verification outcomes
+- `/trace` — updates guardrail entries from architecture compliance check
+- `/workflow` — reconciliation seeds missing guardrails from registry and compliance frameworks
+- `/discovery` — seeds compliance-framework guardrail entries from context.yml at feature creation
+
+---
+
 ## [0.5.16] — 2026-04-02
 
 ### Changed

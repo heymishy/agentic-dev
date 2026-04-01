@@ -185,3 +185,65 @@
 
 ---
 <!-- Add further ADRs as ADR-002, ADR-003 etc. -->
+
+---
+
+## Guardrails Registry
+
+<!--
+  GUARDRAILS_REGISTRY — Machine-parseable guardrail index.
+  
+  This block is read by:
+  - pipeline-viz.html (Guardrails Compliance sub-panel in governance view)
+  - /review skill (Category E checklist)
+  - /definition-of-ready (H9 guardrail compliance check)
+  - /trace (architecture compliance check)
+  
+  Each guardrail has a unique ID, category, and short label.
+  Skills evaluate each applicable guardrail and write the result to
+  feature.guardrails[] in pipeline-state.json.
+  
+  Categories:
+    mandatory-constraint  — from Mandatory Constraints section above
+    adr                   — from Active Repo-Level ADRs above
+    pattern               — from Approved Patterns above
+    anti-pattern          — from Anti-Patterns above
+  
+  NFR and compliance-framework items are NOT listed here — they come from
+  artefacts/[feature]/nfr-profile.md and config.governance.complianceFrameworks
+  respectively, and are added dynamically per feature.
+  
+  Format: YAML block fenced with ```yaml guardrails-registry / ```.
+  The viz parses this block from the fetched .md file at runtime.
+  
+  [FILL IN] — add entries matching your mandatory constraints, ADRs, patterns,
+  and anti-patterns above. Use consistent IDs (MC-SEC-01, ADR-001, PAT-01, AP-01).
+-->
+
+```yaml guardrails-registry
+# Example entries — replace with your actual guardrails:
+- id: MC-SEC-01
+  category: mandatory-constraint
+  label: "Server-side input validation on all user inputs"
+  section: Security
+
+- id: MC-SEC-02
+  category: mandatory-constraint
+  label: "No secrets in source code"
+  section: Security
+
+- id: ADR-001
+  category: adr
+  label: "[Your first ADR title]"
+  section: Active ADRs
+
+- id: PAT-01
+  category: pattern
+  label: "[Your first approved pattern]"
+  section: Approved Patterns
+
+- id: AP-01
+  category: anti-pattern
+  label: "[Your first anti-pattern]"
+  section: Anti-Patterns
+```

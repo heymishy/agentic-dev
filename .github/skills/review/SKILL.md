@@ -277,4 +277,13 @@ After producing a review report, for each story reviewed update the story entry 
 - Set `highFindings: [count]`
 - Set `health: "green"` if passed, `"red"` if HIGH findings remain, `"amber"` if MEDIUM only
 
+**Guardrails compliance update:** After completing Category E, update the feature-level `guardrails[]` array in `pipeline-state.json`. Read the `Guardrails Registry` block from `.github/architecture-guardrails.md` (the `yaml guardrails-registry` fenced code block). For each guardrail item in the registry that was evaluated during Category E:
+
+- If the guardrail is satisfied by all stories: add/update `{ "id": "[guardrail-id]", "category": "[category]", "label": "[label]", "status": "met", "evidence": "[finding reference or 'No violations found']", "assessedBy": "/review", "assessedAt": "[now]" }`
+- If a HIGH or MEDIUM finding references the guardrail: set `"status": "not-met"`, with `"evidence"` citing the finding ID
+- If the guardrail is not applicable to the feature scope: set `"status": "na"`
+- Do not remove existing guardrail entries written by other skills — merge by `id`, updating `status`, `evidence`, `assessedBy`, and `assessedAt`
+
+The guardrails array is read by the pipeline visualiser Guardrails Compliance Matrix panel.
+
 **Human review note:** If a human resolves findings and re-approves stories outside a skill session, update `reviewStatus` and `highFindings` manually in `pipeline-state.json`, or run `/workflow` to reconcile.

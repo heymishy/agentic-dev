@@ -462,6 +462,11 @@ For each feature in `pipeline-state.json`:
    - **`regulated` / `complianceProfile` / `complianceFrameworks`:** Read `.github/context.yml`. Set `regulated: [meta.regulated]`, `complianceProfile: "regulated"` if true (else `"standard"`), `complianceFrameworks: [compliance.frameworks]`, `sensitiveDataCategories: [compliance.sensitive_data_categories]` on any feature that is missing these fields.
    - **`config.governance`:** If `context.yml: mapping.governance.gates` is non-empty and `config.governance` does not yet exist in pipeline-state.json, write `config.governance: { gates: [mapping.governance.gates], complianceFrameworks: [compliance.frameworks], sensitiveDataCategories: [compliance.sensitive_data_categories], regulated: [meta.regulated] }`.
    - **Epic `status` recomputation:** For every epic, recompute `status` from story states (same parent propagation rule as inner loop skills).
+   - **Guardrails reconciliation:** Read `.github/architecture-guardrails.md` — if a `Guardrails Registry` block exists (fenced `yaml guardrails-registry` code block), parse the guardrail items. For each feature:
+     - If `feature.guardrails` does not exist, initialise it as an empty array
+     - For each registry item not already in `feature.guardrails[]`, add `{ "id": "[id]", "category": "[category]", "label": "[label]", "status": "not-assessed" }` — this seeds the matrix for the visualiser
+     - If `config.governance.complianceFrameworks` contains frameworks not already represented in `feature.guardrails[]`, add entries with `"category": "compliance-framework"` and `"status": "not-assessed"`
+     - Do not overwrite entries that already have a `"status"` other than `"not-assessed"` — those were set by evaluation skills
 
 6. **After reconciliation:**
    - Update `updated` timestamp to now

@@ -223,3 +223,171 @@ Governance audit found org/tool names hardcoded in skill files and the viz havin
 
 #### Revisit trigger
 If the viz gains a server-side rendering layer, direct `context.yml` reading becomes feasible and should be adopted.
+
+---
+
+## Guardrails Registry
+
+<!--
+  GUARDRAILS_REGISTRY — Machine-parseable guardrail index.
+  
+  This block is read by:
+  - pipeline-viz.html (Guardrails Compliance sub-panel in governance view)
+  - /review skill (Category E checklist)
+  - /definition-of-ready (H9 guardrail compliance check)
+  - /trace (architecture compliance check)
+  
+  Each guardrail has a unique ID, category, and short label.
+  Skills evaluate each applicable guardrail and write the result to
+  feature.guardrails[] in pipeline-state.json.
+  
+  Categories:
+    mandatory-constraint  — from Mandatory Constraints section above
+    adr                   — from Active Repo-Level ADRs above
+    pattern               — from Approved Patterns above
+    anti-pattern          — from Anti-Patterns above
+  
+  NFR and compliance-framework items are NOT listed here — they come from
+  artefacts/[feature]/nfr-profile.md and config.governance.complianceFrameworks
+  respectively, and are added dynamically per feature.
+  
+  Format: YAML block fenced with ```yaml guardrails-registry / ```.
+  The viz parses this block from the fetched .md file at runtime.
+-->
+
+```yaml guardrails-registry
+- id: MC-SEC-01
+  category: mandatory-constraint
+  label: "No user-supplied content in innerHTML without sanitisation"
+  section: Security
+
+- id: MC-SEC-02
+  category: mandatory-constraint
+  label: "No credentials, tokens, or personal data in committed files"
+  section: Security
+
+- id: MC-SEC-03
+  category: mandatory-constraint
+  label: "Viz reads local JSON only — no external fetch calls"
+  section: Security
+
+- id: MC-CORRECT-01
+  category: mandatory-constraint
+  label: "Gate logic reads evidence fields from pipeline-state.json (not stage alone)"
+  section: Correctness
+
+- id: MC-CORRECT-02
+  category: mandatory-constraint
+  label: "Fields written to pipeline-state.json must exist in schema"
+  section: Correctness
+
+- id: MC-CORRECT-03
+  category: mandatory-constraint
+  label: "Fields read by viz from pipeline-state.json must exist in schema"
+  section: Correctness
+
+- id: MC-SELF-01
+  category: mandatory-constraint
+  label: "pipeline-viz.html renders without build step, server, or network"
+  section: Self-containment
+
+- id: MC-SELF-02
+  category: mandatory-constraint
+  label: "No npm devDependencies in pipeline-viz.html runtime"
+  section: Self-containment
+
+- id: MC-CONSIST-01
+  category: mandatory-constraint
+  label: "Stage enum in schema updated when skill adds/removes stage"
+  section: Consistency
+
+- id: MC-CONSIST-02
+  category: mandatory-constraint
+  label: "Gate add/remove synced with SKILL.md criteria"
+  section: Consistency
+
+- id: MC-A11Y-01
+  category: mandatory-constraint
+  label: "Interactive elements keyboard-accessible"
+  section: Accessibility
+
+- id: MC-A11Y-02
+  category: mandatory-constraint
+  label: "Colour not sole indicator of gate status (icons/labels present)"
+  section: Accessibility
+
+- id: ADR-001
+  category: adr
+  label: "Single-file viz, no build step"
+  section: Active ADRs
+
+- id: ADR-002
+  category: adr
+  label: "Gates must use evidence fields, not stage-proxy"
+  section: Active ADRs
+
+- id: ADR-003
+  category: adr
+  label: "Schema-first: fields defined before use"
+  section: Active ADRs
+
+- id: ADR-004
+  category: adr
+  label: "context.yml is the single config source of truth"
+  section: Active ADRs
+
+- id: PAT-01
+  category: pattern
+  label: "Single-file HTML viz architecture"
+  section: Approved Patterns
+
+- id: PAT-02
+  category: pattern
+  label: "State access via parsed pipelineState global"
+  section: Approved Patterns
+
+- id: PAT-03
+  category: pattern
+  label: "Gate pass/fail by evidence fields"
+  section: Approved Patterns
+
+- id: PAT-04
+  category: pattern
+  label: "Schema evolution: add fields simultaneously"
+  section: Approved Patterns
+
+- id: PAT-05
+  category: pattern
+  label: "Config reading via context.yml"
+  section: Approved Patterns
+
+- id: AP-01
+  category: anti-pattern
+  label: "Gate logic checking feature.stage only"
+  section: Anti-Patterns
+
+- id: AP-02
+  category: anti-pattern
+  label: "Hardcoded org/tool names in skill files"
+  section: Anti-Patterns
+
+- id: AP-03
+  category: anti-pattern
+  label: "External CDN dependencies in viz at runtime"
+  section: Anti-Patterns
+
+- id: AP-04
+  category: anti-pattern
+  label: "Fields used by viz/skills but not in schema"
+  section: Anti-Patterns
+
+- id: AP-05
+  category: anti-pattern
+  label: "Committing viz changes without passing check-viz-syntax.js"
+  section: Anti-Patterns
+
+- id: AP-06
+  category: anti-pattern
+  label: "Directly mutating pipeline-state.json outside skills"
+  section: Anti-Patterns
+```

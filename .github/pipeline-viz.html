@@ -798,6 +798,37 @@
   #download-btn { background:none; border:1px solid var(--border); color:var(--muted); border-radius:4px; padding:3px 8px; font-size:11px; cursor:pointer; }
   #download-btn:hover { color:var(--text); border-color:var(--text); }
   #download-btn.dirty { color:var(--green); border-color:rgba(34,197,94,.5); }
+
+  /* ── Guardrails compliance matrix ─────────────────────────────────── */
+  .guardrails-panel { margin-top: 16px; }
+  .guardrails-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .guardrails-panel-header h3 { font-size:13px; font-weight:600; color:var(--text); margin:0; }
+  .guardrails-panel-controls { display:flex; gap:6px; align-items:center; }
+  .guardrails-summary { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px; }
+  .guardrails-cat-filter { font-size:10px; border-radius:999px; padding:2px 8px; border:1px solid var(--border); background:none; color:var(--muted); cursor:pointer; }
+  .guardrails-cat-filter:hover { color:var(--text); border-color:var(--text); }
+  .guardrails-cat-filter.active { color:var(--blue); border-color:rgba(96,165,250,.5); background:rgba(96,165,250,.08); }
+  .guardrails-wrap { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-x:auto; }
+  .guardrails-table { width:100%; border-collapse:collapse; font-size:11px; min-width:600px; }
+  .guardrails-table th, .guardrails-table td { border-bottom:1px solid var(--border); padding:6px 8px; text-align:left; vertical-align:middle; }
+  .guardrails-table th { color:var(--muted); text-transform:uppercase; font-size:10px; letter-spacing:.04em; background:var(--surface2); }
+  .guardrails-id { font-family:monospace; font-size:10px; color:var(--muted); white-space:nowrap; }
+  .guardrails-label { color:var(--text); max-width:320px; }
+  .guardrails-cat { font-size:10px; border-radius:999px; padding:1px 6px; border:1px solid var(--border); white-space:nowrap; }
+  .guardrails-cat.mandatory-constraint { color:var(--red); border-color:rgba(239,68,68,.3); }
+  .guardrails-cat.adr { color:#93c5fd; border-color:rgba(147,197,253,.3); }
+  .guardrails-cat.pattern { color:var(--green); border-color:rgba(34,197,94,.3); }
+  .guardrails-cat.anti-pattern { color:var(--amber); border-color:rgba(245,158,11,.3); }
+  .guardrails-cat.nfr { color:#c084fc; border-color:rgba(192,132,252,.3); }
+  .guardrails-cat.compliance-framework { color:#f472b6; border-color:rgba(244,114,182,.3); }
+  .guardrails-status { display:inline-flex; align-items:center; gap:3px; font-size:10px; border-radius:999px; padding:1px 6px; border:1px solid var(--border); white-space:nowrap; }
+  .guardrails-status.met { color:var(--green); border-color:rgba(34,197,94,.35); background:rgba(34,197,94,.08); }
+  .guardrails-status.not-met { color:var(--red); border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
+  .guardrails-status.na { color:var(--muted); }
+  .guardrails-status.excepted { color:var(--amber); border-color:rgba(245,158,11,.35); background:rgba(245,158,11,.08); }
+  .guardrails-status.not-assessed { color:var(--muted); border-color:var(--border); background:var(--surface2); }
+  .guardrails-evidence { font-size:10px; color:var(--muted); max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .guardrails-section-row td { background:var(--surface2); font-weight:600; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
 </style>
 </head>
 <body>
@@ -1028,7 +1059,7 @@ const DEFAULT_GOVERNANCE_GATES = [
   { id: 'decisions',           label: 'Decisions',      skill: '/decisions',           skillPath: 'skills/decisions/SKILL.md',           criteria: 'Risk acceptances and scope decisions logged',                artefact: f => `../artefacts/${f.slug}/decisions.md` },
   { id: 'verify-completion',   label: 'Verify',         skill: '/verify-completion',   skillPath: 'skills/verify-completion/SKILL.md',   criteria: 'Fresh evidence run before completion claims',                artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/verification-scripts/${s}-verification.md` : `../artefacts/${f.slug}/verification-scripts/`; } },
   { id: 'definition-of-done',  label: 'DoD',            skill: '/definition-of-done',  skillPath: 'skills/definition-of-done/SKILL.md',  criteria: 'Post-merge AC/test coverage validated',                      artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/dod/${s}-dod.md` : `../artefacts/${f.slug}/dod/`; } },
-  { id: 'trace',               label: 'Trace',          skill: '/trace',               skillPath: 'skills/trace/SKILL.md',               criteria: 'Traceability chain intact across artefacts',                 artefact: f => `../artefacts/${f.slug}/trace/trace.md` },
+  { id: 'trace',               label: 'Trace',          skill: '/trace',               skillPath: 'skills/trace/SKILL.md',               criteria: 'Traceability chain intact across artefacts',                 artefact: f => `../artefacts/${f.slug}/trace/trace.md`, artefactFallbacks: f => { const dates = []; const d = new Date(); for (let i = 0; i < 14; i++) { const ds = d.toISOString().slice(0,10); dates.push(`../artefacts/${f.slug}/trace/${ds}-trace.md`); d.setDate(d.getDate() - 1); } return dates; } },
   { id: 'release',             label: 'Release',        skill: '/release',             skillPath: 'skills/release/SKILL.md',             criteria: 'Release bundle/checklist produced for deployment',           artefact: f => `../artefacts/${f.slug}/release/release-notes-technical.md` },
 ];
 
@@ -1077,6 +1108,9 @@ let governanceScope = 'feature'; // 'feature' | 'epic' | 'programme' — governa
 // User toggle persisted in localStorage so it survives page reloads.
 let governanceStrictPolicy = (localStorage.getItem('gov-strict-policy') === 'true');
 let skillMetadata = {}; // { gateId | metaId: { description: '...', loaded: true } }
+let showGuardrailsPanel = false;
+let guardrailsCategoryFilter = ''; // category slug or '' for all
+let guardrailsRegistryCache = null; // parsed guardrail items from architecture-guardrails.md
 let columnUi = {
   globalWidth: 220,
   autoShrinkEmpty: true,
@@ -2027,6 +2061,9 @@ function renderGovernance(features) {
     }
   }
 
+  // Guardrails panel always uses feature-level data (guardrails[] is stored on features)
+  const guardrailsPanelHTML = renderGuardrailsPanel(features);
+
   board.innerHTML = `
     ${complianceBannerHTML}
     <div class="gov-summary">
@@ -2039,6 +2076,7 @@ function renderGovernance(features) {
       <button class="${scopeBtnClass}" data-action="toggle-gov-scope">${scopeBtnLabel}</button>
       <button class="${policyBtnClass}" data-action="toggle-gov-policy">${policyBtnLabel}</button>
       <button class="gov-btn" data-action="export-gov-csv">Export CSV</button>
+      <button class="${showGuardrailsPanel ? 'gov-btn active' : 'gov-btn'}" data-action="toggle-guardrails">Guardrails</button>
       ${clearFilterBtn}
       <span class="gov-note">${policyNote}</span>
     </div>
@@ -2064,7 +2102,8 @@ function renderGovernance(features) {
         <tbody>${matrixRowsHTML}</tbody>
       </table>
     </div>
-    ${emptyFilterMsg}`;
+    ${emptyFilterMsg}
+    ${guardrailsPanelHTML}`;
 }
 
 function governanceRowHTML(feature, gateResults) {
@@ -2262,6 +2301,220 @@ function gateStatus(feature, gateId) {
   }
 
   return applyGovernancePolicy(feature, status);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GUARDRAILS COMPLIANCE MATRIX
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function fetchGuardrailsRegistry() {
+  if (guardrailsRegistryCache) return guardrailsRegistryCache;
+  try {
+    const res = await fetch('../architecture-guardrails.md');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    // Extract the ```yaml guardrails-registry ... ``` fenced block
+    const match = text.match(/```yaml\s+guardrails-registry\s*\n([\s\S]*?)```/);
+    if (!match) { guardrailsRegistryCache = []; return []; }
+    const yamlText = match[1];
+    // Simple YAML list parser: each item starts with "- id:" and has key: value lines
+    const items = [];
+    let current = null;
+    yamlText.split('\n').forEach(function(line) {
+      const idMatch = line.match(/^-\s+id:\s*(.+)/);
+      if (idMatch) {
+        if (current) items.push(current);
+        current = { id: idMatch[1].trim() };
+        return;
+      }
+      if (!current) return;
+      const kvMatch = line.match(/^\s+(category|label|section):\s*"?([^"]*)"?\s*$/);
+      if (kvMatch) {
+        current[kvMatch[1]] = kvMatch[2].trim();
+      }
+    });
+    if (current) items.push(current);
+    guardrailsRegistryCache = items;
+    return items;
+  } catch (_) {
+    guardrailsRegistryCache = [];
+    return [];
+  }
+}
+
+function guardrailStatusIcon(status) {
+  if (status === 'met') return '✓';
+  if (status === 'not-met') return '✗';
+  if (status === 'na') return '·';
+  if (status === 'excepted') return '⚠';
+  return '?';
+}
+
+function buildGuardrailRows(registryItems, features) {
+  // Merge registry items with dynamic per-feature guardrail state.
+  // Also add NFR and compliance-framework items found in feature.guardrails[] but not in registry.
+  const knownIds = new Set(registryItems.map(function(r) { return r.id; }));
+  const dynamicItems = [];
+  features.forEach(function(f) {
+    var fg = f.guardrails || [];
+    fg.forEach(function(g) {
+      if (!knownIds.has(g.id)) {
+        knownIds.add(g.id);
+        dynamicItems.push({ id: g.id, category: g.category || 'nfr', label: g.label || g.id, section: g.category === 'compliance-framework' ? 'Compliance' : 'NFR' });
+      }
+    });
+  });
+
+  // Also add compliance framework items from config
+  if (allData && allData.config && allData.config.governance) {
+    var frameworks = allData.config.governance.complianceFrameworks || [];
+    frameworks.forEach(function(fw) {
+      var fwId = 'CF-' + fw.toUpperCase().replace(/[^A-Z0-9]/g, '-');
+      if (!knownIds.has(fwId)) {
+        knownIds.add(fwId);
+        dynamicItems.push({ id: fwId, category: 'compliance-framework', label: fw + ' compliance', section: 'Compliance' });
+      }
+    });
+  }
+
+  var allItems = registryItems.concat(dynamicItems);
+
+  // Build row data: each guardrail × each feature
+  return allItems.map(function(item) {
+    var featureStatuses = features.map(function(f) {
+      var fg = (f.guardrails || []).find(function(g) { return g.id === item.id; });
+      return {
+        feature: f,
+        status: fg ? fg.status : 'not-assessed',
+        evidence: fg ? (fg.evidence || '') : '',
+        exception: fg ? (fg.exception || '') : '',
+        assessedBy: fg ? (fg.assessedBy || '') : '',
+      };
+    });
+    return { item: item, featureStatuses: featureStatuses };
+  });
+}
+
+function renderGuardrailsPanel(features) {
+  if (!showGuardrailsPanel) return '';
+
+  var registryItems = guardrailsRegistryCache || [];
+  var rows = buildGuardrailRows(registryItems, features);
+
+  // Apply category filter
+  if (guardrailsCategoryFilter) {
+    rows = rows.filter(function(r) { return r.item.category === guardrailsCategoryFilter; });
+  }
+
+  // Compute summary counts
+  var allStatuses = rows.flatMap(function(r) { return r.featureStatuses.map(function(fs) { return fs.status; }); });
+  var metCount = allStatuses.filter(function(s) { return s === 'met'; }).length;
+  var notMetCount = allStatuses.filter(function(s) { return s === 'not-met'; }).length;
+  var naCount = allStatuses.filter(function(s) { return s === 'na'; }).length;
+  var exceptedCount = allStatuses.filter(function(s) { return s === 'excepted'; }).length;
+  var notAssessedCount = allStatuses.filter(function(s) { return s === 'not-assessed'; }).length;
+
+  // Unique categories for filter buttons
+  var categories = [];
+  var catSet = {};
+  rows.forEach(function(r) {
+    if (!catSet[r.item.category]) {
+      catSet[r.item.category] = true;
+      categories.push(r.item.category);
+    }
+  });
+
+  var catButtonsHTML = categories.map(function(cat) {
+    var active = guardrailsCategoryFilter === cat ? ' active' : '';
+    return '<button class="guardrails-cat-filter' + active + '" data-action="filter-guardrails-cat" data-cat="' + esc(cat) + '">' + esc(cat.replace(/-/g, ' ')) + '</button>';
+  }).join('');
+
+  var clearCatBtn = guardrailsCategoryFilter ? '<button class="gov-btn" data-action="clear-guardrails-cat-filter" style="font-size:10px;padding:2px 6px">Clear</button>' : '';
+
+  // Feature column headers
+  var featureHeadersHTML = features.map(function(f) {
+    return '<th title="' + esc(f.slug) + '">' + esc(f.name.length > 20 ? f.name.substring(0, 18) + '…' : f.name) + '</th>';
+  }).join('');
+
+  // Group rows by section
+  var sections = [];
+  var sectionMap = {};
+  rows.forEach(function(r) {
+    var sec = r.item.section || 'Other';
+    if (!sectionMap[sec]) {
+      sectionMap[sec] = { label: sec, rows: [] };
+      sections.push(sectionMap[sec]);
+    }
+    sectionMap[sec].rows.push(r);
+  });
+
+  var bodyHTML = '';
+  sections.forEach(function(sec) {
+    bodyHTML += '<tr class="guardrails-section-row"><td colspan="' + (3 + features.length) + '">' + esc(sec.label) + '</td></tr>';
+    sec.rows.forEach(function(r) {
+      var cellsHTML = r.featureStatuses.map(function(fs) {
+        var tip = fs.evidence ? esc(fs.evidence) : '';
+        if (fs.exception) tip += (tip ? '\n' : '') + 'Exception: ' + esc(fs.exception);
+        if (fs.assessedBy) tip += (tip ? '\n' : '') + 'By: ' + esc(fs.assessedBy);
+        return '<td><span class="guardrails-status ' + fs.status + '" title="' + tip + '">' + guardrailStatusIcon(fs.status) + ' ' + esc(fs.status.replace(/-/g, ' ')) + '</span></td>';
+      }).join('');
+      bodyHTML += '<tr>'
+        + '<td class="guardrails-id">' + esc(r.item.id) + '</td>'
+        + '<td class="guardrails-label">' + esc(r.item.label) + '</td>'
+        + '<td><span class="guardrails-cat ' + esc(r.item.category) + '">' + esc(r.item.category.replace(/-/g, ' ')) + '</span></td>'
+        + cellsHTML
+        + '</tr>';
+    });
+  });
+
+  var emptyMsg = rows.length === 0
+    ? '<div class="aq-empty" style="margin-top:8px">No guardrail items found.' + (guardrailsCategoryFilter ? ' Try clearing the category filter.' : ' Add a Guardrails Registry to architecture-guardrails.md.') + '</div>'
+    : '';
+
+  return '<div class="guardrails-panel">'
+    + '<div class="guardrails-panel-header">'
+    + '<h3>Guardrails Compliance Matrix</h3>'
+    + '<div class="guardrails-panel-controls">'
+    + '<button class="gov-btn" data-action="export-guardrails-csv" style="font-size:10px;padding:2px 6px">Export CSV</button>'
+    + '<button class="gov-btn" data-action="toggle-guardrails" style="font-size:10px;padding:2px 6px">Hide</button>'
+    + '</div>'
+    + '</div>'
+    + '<div class="guardrails-summary">'
+    + '<span class="gov-pill pass">Met ' + metCount + '</span>'
+    + '<span class="gov-pill fail">Not Met ' + notMetCount + '</span>'
+    + '<span class="gov-pill warn">Excepted ' + exceptedCount + '</span>'
+    + '<span class="gov-pill">N/A ' + naCount + '</span>'
+    + '<span class="gov-pill">Not Assessed ' + notAssessedCount + '</span>'
+    + '</div>'
+    + '<div class="guardrails-summary">' + catButtonsHTML + clearCatBtn + '</div>'
+    + '<div class="guardrails-wrap">'
+    + '<table class="guardrails-table">'
+    + '<thead><tr><th>ID</th><th>Guardrail</th><th>Category</th>' + featureHeadersHTML + '</tr></thead>'
+    + '<tbody>' + bodyHTML + '</tbody>'
+    + '</table>'
+    + '</div>'
+    + emptyMsg
+    + '</div>';
+}
+
+function exportGuardrailsCsv(features) {
+  var registryItems = guardrailsRegistryCache || [];
+  var rows = buildGuardrailRows(registryItems, features);
+  var header = ['guardrail_id', 'label', 'category', 'section'].concat(features.map(function(f) { return f.slug + '_status'; })).concat(features.map(function(f) { return f.slug + '_evidence'; }));
+  var lines = [header.join(',')];
+  rows.forEach(function(r) {
+    var values = [r.item.id, r.item.label, r.item.category, r.item.section || ''];
+    r.featureStatuses.forEach(function(fs) { values.push(fs.status); });
+    r.featureStatuses.forEach(function(fs) { values.push(fs.evidence); });
+    lines.push(values.map(csvEscape).join(','));
+  });
+  var blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'guardrails-compliance.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function exportGovernanceCsv(features) {
@@ -3231,6 +3484,34 @@ function handleBoardClick(e) {
     const exportGovCsv = e.target.closest('[data-action="export-gov-csv"]');
     if (exportGovCsv) {
       exportGovernanceCsv(filteredFeatures());
+      return;
+    }
+    const toggleGuardrails = e.target.closest('[data-action="toggle-guardrails"]');
+    if (toggleGuardrails) {
+      showGuardrailsPanel = !showGuardrailsPanel;
+      if (showGuardrailsPanel && !guardrailsRegistryCache) {
+        fetchGuardrailsRegistry().then(function() { render(); });
+      } else {
+        render();
+      }
+      return;
+    }
+    const filterGuardrailsCat = e.target.closest('[data-action="filter-guardrails-cat"]');
+    if (filterGuardrailsCat) {
+      const cat = filterGuardrailsCat.dataset.cat || '';
+      guardrailsCategoryFilter = guardrailsCategoryFilter === cat ? '' : cat;
+      render();
+      return;
+    }
+    const clearGuardrailsCat = e.target.closest('[data-action="clear-guardrails-cat-filter"]');
+    if (clearGuardrailsCat) {
+      guardrailsCategoryFilter = '';
+      render();
+      return;
+    }
+    const exportGuardrailsCsvBtn = e.target.closest('[data-action="export-guardrails-csv"]');
+    if (exportGuardrailsCsvBtn) {
+      exportGuardrailsCsv(filteredFeatures());
       return;
     }
     const focusFeature = e.target.closest('[data-action="focus-feature"]');

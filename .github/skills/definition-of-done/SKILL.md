@@ -213,3 +213,7 @@ Update `.github/pipeline-state.json` in the **project repository** when the DoD 
   - `metrics[x].signal` ← determined signal value (`"on-track"` / `"at-risk"` / `"off-track"` / `"not-yet-measured"`)
   - `metrics[x].evidence` ← evidence string or `null`
   - `metrics[x].lastMeasured` ← ISO 8601 date string or `null`
+- **Guardrails compliance update (from Step 5 — NFR check):** Update the feature-level `guardrails[]` array:
+  - For each NFR that was verified in Step 5, update the matching `guardrails[]` entry (by `id`): set `"status": "met"` if verified successfully, `"status": "not-met"` if gaps found, with `"assessedBy": "/definition-of-done"`, `"assessedAt": "[now]"`, `"evidence": "[verification outcome]"`
+  - For compliance NFRs with named regulatory clauses: if sign-off is confirmed, set `"status": "met"`; if missing, set `"status": "not-met"` with `"evidence"` noting the gap
+  - Merge by `id` — do not remove existing entries from other skills

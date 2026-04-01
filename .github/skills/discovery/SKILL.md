@@ -287,4 +287,6 @@ When the discovery artefact is saved and approved, update `.github/pipeline-stat
 These fields are read by the visualiser governance view. They must be set at discovery time so the governance matrix can apply the correct policy (strict/standard) from the start of the feature lifecycle.
 
 **Config governance bridge:** Also read `mapping.governance.gates` from context.yml. If non-empty, write it to `config.governance.gates` in pipeline-state.json (top-level `config` object). This allows the visualiser to use repo-specific gate definitions instead of hardcoded defaults.
+
+**Compliance guardrails seeding:** If `compliance.frameworks` from context.yml is non-empty, seed the feature-level `guardrails[]` array with compliance framework entries: for each framework, add `{ "id": "CF-[FRAMEWORK-NAME]", "category": "compliance-framework", "label": "[framework] compliance", "status": "not-assessed" }`. This makes compliance frameworks visible in the Guardrails Compliance Matrix from the start of the feature lifecycle. Also read `.github/copilot-instructions.md` — if it contains an `Architecture standards` section referencing an `architecture-guardrails.md` file, note this context for downstream skills.
 **Human review note:** If a human approves the discovery outside of a skill session, run `/workflow` â€” it will reconcile the state file with the artefacts.

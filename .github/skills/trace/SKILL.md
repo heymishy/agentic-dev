@@ -264,4 +264,10 @@ Add to a pre-push git hook if you want it enforced locally.
 - Set `updatedAt: [now]` on the feature record
 - Set feature-level `traceStatus: "passed"` if no findings, or `"has-findings"` if any broken links/missing artefacts are reported
 
+**Guardrails compliance update:** After completing the architecture compliance check (which reads `.github/architecture-guardrails.md`), update the feature-level `guardrails[]` array:
+
+- For each guardrail referenced in the `Guardrails Registry` block that was checked during the trace: set `"status": "met"` if no violations, `"status": "not-met"` if an unresolved deviation crosses a guardrail, with `"assessedBy": "/trace"`, `"assessedAt": "[now]"`
+- For ADR entries: if a repo-level ADR is found to be Superseded or Deprecated (no longer Active), set the corresponding guardrail entry to `"status": "na"` with evidence noting the change
+- Merge by `id` — do not remove existing entries from other skills
+
 This allows the visualiser governance view to surface traceability gaps directly. The `traceStatus` field is read by the governance gate checker — without it the gate shows "Pending" indefinitely.

@@ -88,6 +88,24 @@
           "updatedAt":{ "type": "string", "format": "date-time" },
           "blocker":  { "type": "string", "description": "Human-readable blocker description if health is red" },
           "traceStatus": { "type": "string", "enum": ["not-run", "passed", "has-findings"], "description": "Traceability check result written by /trace skill" },
+          "guardrails": {
+            "type": "array",
+            "description": "Per-guardrail compliance status for this feature. Written by /review (Category E), /definition-of-ready (H9, H-NFR), /definition-of-done (NFR check), /trace (architecture check). Each entry tracks one guardrail item.",
+            "items": {
+              "type": "object",
+              "required": ["id", "category", "label", "status"],
+              "properties": {
+                "id":        { "type": "string", "description": "Unique guardrail identifier, e.g. MC-SEC-01, ADR-001, NFR-PERF-01, CF-PCI-01" },
+                "category":  { "type": "string", "enum": ["mandatory-constraint", "adr", "nfr", "compliance-framework", "pattern", "anti-pattern"], "description": "Source category of the guardrail" },
+                "label":     { "type": "string", "description": "Short human-readable label" },
+                "status":    { "type": "string", "enum": ["met", "not-met", "na", "excepted", "not-assessed"], "description": "Compliance status" },
+                "evidence":  { "type": "string", "description": "Brief evidence or reference: story slug, review finding ID, decision ID" },
+                "exception": { "type": "string", "description": "If excepted: RISK-ACCEPT reference from decisions.md" },
+                "assessedBy":{ "type": "string", "description": "Skill that last assessed this guardrail, e.g. /review, /definition-of-ready" },
+                "assessedAt":{ "type": "string", "format": "date-time" }
+              }
+            }
+          },
           "epics": {
             "type": "array",
             "items": {

@@ -288,4 +288,10 @@ Update `.github/pipeline-state.json` in the **project repository** after produci
 - If all hard blocks pass: set `stage: "definition-of-ready"`, `dorStatus: "signed-off"`, `health: "green"`, `updatedAt: [now]`
 - If any hard block fails: set `dorStatus: "blocked"`, `health: "red"`, `blocker: "[first failing block description]"`, `updatedAt: [now]`
 
+**Guardrails compliance update:** After evaluating H9 (Architecture Constraints), H-NFR, H-NFR2, and H-NFR3, update the feature-level `guardrails[]` array:
+
+- For H9: update guardrail entries whose `id` matches any guardrail referenced in story Architecture Constraints fields. Set `"status": "met"` if H9 passed, `"status": "not-met"` if H9 failed, with `"assessedBy": "/definition-of-ready"`.
+- For H-NFR: if an NFR profile exists, read its items and add/update entries with `"category": "nfr"` in the guardrails array. Each NFR item becomes a guardrail entry: `{ "id": "NFR-[slug]", "category": "nfr", "label": "[NFR label]", "status": "met" or "not-met", "assessedBy": "/definition-of-ready", "assessedAt": "[now]" }`
+- Merge by `id` — do not remove existing entries from other skills.
+
 **Human sign-off note:** DoR requires explicit human sign-off. When a human confirms "Proceed", update `dorStatus: "signed-off"` in the state file if not already set, or run `/workflow` to reconcile.
