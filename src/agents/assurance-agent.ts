@@ -84,6 +84,16 @@ async function main(): Promise<void> {
     idx('--tracePath') >= 0 ? args[idx('--tracePath') + 1] : './trace.jsonl';
 
   const record = await runAssuranceAgent({ registryPath, tracePath });
+  if (record.verdict === 'closed') {
+    const queueRoot = 'queue';
+    const qualityReview = path.join(queueRoot, 'quality-review');
+    const done = path.join(queueRoot, 'done');
+    const historyPath = path.join(queueRoot, 'history.jsonl');
+    const taskId = getTaskInDir(qualityReview);
+    moveTask(taskId, qualityReview, done);
+    appendHistory(taskId, 'quality-review', 'done', historyPath);
+  }
+  process.stdout.write('Assurance agent complete.\n');
   if (record.verdict === 'escalate') {
     process.exit(1);
   }

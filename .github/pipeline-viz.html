@@ -179,6 +179,7 @@
   .card-track.short    { color: var(--teal); }
   .card-track.standard { color: var(--blue); }
   .card-track.programme-workstream { color: var(--purple); }
+  .programme-badge { font-size: 9px; color: var(--purple); border: 1px solid rgba(168,85,247,.3); border-radius: 3px; padding: 0 5px; white-space: nowrap; }
 
   .card-state-chip {
     font-size: 9px; border-radius: 3px; padding: 1px 5px; flex-shrink: 0;
@@ -694,6 +695,16 @@
   .gov-ref-item .name { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
   .gov-ref-item .skill { font-size: 10px; color: #93c5fd; margin-bottom: 4px; }
   .gov-ref-item .criteria { font-size: 10px; color: var(--muted); line-height: 1.4; }
+  .gov-ref-item .criteria-short { font-size: 10px; color: var(--muted); line-height: 1.4; cursor: help; }
+  .gov-ref-compact { display: flex; flex-wrap: wrap; gap: 6px; }
+  .gov-ref-chip {
+    font-size: 10px; padding: 3px 8px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface2);
+    cursor: help; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .gov-ref-chip .chip-label { font-weight: 600; }
+  .gov-ref-chip .chip-skill { color: #93c5fd; }
+  .gov-ref-chip .chip-badge { margin-left: 2px; }
   .gov-ref-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
   .gov-ref-header h3 { margin-bottom: 0; }
   .gov-ref-item-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
@@ -743,6 +754,8 @@
   .gov-status.policy { box-shadow: inset 0 0 0 1px rgba(245,158,11,.45); }
   .gov-link { margin-left: 6px; font-size: 10px; }
   .outcome-feature { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-bottom:12px; }
+  .outcome-programme-group { margin-bottom:16px; }
+  .outcome-programme-header { display:flex; align-items:center; gap:8px; padding:6px 0 8px; border-bottom:1px solid rgba(168,85,247,.2); margin-bottom:10px; }
   .outcome-feature-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px; }
   .outcome-feature-name { font-size:14px; font-weight:600; color:var(--text); }
   .outcome-problem { font-size:11px; color:var(--muted); line-height:1.5; margin-bottom:14px; font-style:italic; }
@@ -818,6 +831,13 @@
   <div class="filter-group">
     <label>Team</label>
     <select id="filter-team">
+      <option value="">All</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Programme</label>
+    <select id="filter-programme">
       <option value="">All</option>
     </select>
   </div>
@@ -998,11 +1018,11 @@ const INNER_LOOP_STAGES = new Set(INNER_LOOP_STAGE_ORDER);
 const PIPELINE_STAGE_ORDER = ['ideation', 'discovery', 'benefit-metric', 'definition', 'spike', 'review', 'test-plan', 'definition-of-ready', 'branch-setup', 'implementation-plan', 'subagent-execution', 'implementation-review', 'verify-completion', 'branch-complete', 'definition-of-done', 'trace', 'release-pending', 'released'];
 
 const DEFAULT_GOVERNANCE_GATES = [
-  { id: 'review',              label: 'Review',    skill: '/review',              skillPath: 'skills/review/SKILL.md',              criteria: 'No HIGH findings before progression',                      artefact: f => `../artefacts/${f.slug}/review/` },
-  { id: 'test-plan',           label: 'Test Plan', skill: '/test-plan',           skillPath: 'skills/test-plan/SKILL.md',           criteria: 'Failing tests and verification script prepared',            artefact: f => `../artefacts/${f.slug}/test-plans/` },
-  { id: 'definition-of-ready', label: 'DoR',       skill: '/definition-of-ready', skillPath: 'skills/definition-of-ready/SKILL.md', criteria: 'All hard blocks pass and sign-off complete',                artefact: f => `../artefacts/${f.slug}/dor/` },
-  { id: 'verify-completion',   label: 'Verify',    skill: '/verify-completion',   skillPath: 'skills/verify-completion/SKILL.md',   criteria: 'Fresh evidence run before completion claims',               artefact: f => `../artefacts/${f.slug}/verification-scripts/` },
-  { id: 'definition-of-done',  label: 'DoD',       skill: '/definition-of-done',  skillPath: 'skills/definition-of-done/SKILL.md',  criteria: 'Post-merge AC/test coverage validated',                     artefact: f => `../artefacts/${f.slug}/dod/` },
+  { id: 'review',              label: 'Review',    skill: '/review',              skillPath: 'skills/review/SKILL.md',              criteria: 'No HIGH findings before progression',                      artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/review/${s}-review-1.md` : `../artefacts/${f.slug}/review/`; } },
+  { id: 'test-plan',           label: 'Test Plan', skill: '/test-plan',           skillPath: 'skills/test-plan/SKILL.md',           criteria: 'Failing tests and verification script prepared',            artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/test-plans/${s}-test-plan.md` : `../artefacts/${f.slug}/test-plans/`; } },
+  { id: 'definition-of-ready', label: 'DoR',       skill: '/definition-of-ready', skillPath: 'skills/definition-of-ready/SKILL.md', criteria: 'All hard blocks pass and sign-off complete',                artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/dor/${s}-dor.md` : `../artefacts/${f.slug}/dor/`; } },
+  { id: 'verify-completion',   label: 'Verify',    skill: '/verify-completion',   skillPath: 'skills/verify-completion/SKILL.md',   criteria: 'Fresh evidence run before completion claims',               artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/verification-scripts/${s}-verification.md` : `../artefacts/${f.slug}/verification-scripts/`; } },
+  { id: 'definition-of-done',  label: 'DoD',       skill: '/definition-of-done',  skillPath: 'skills/definition-of-done/SKILL.md',  criteria: 'Post-merge AC/test coverage validated',                     artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/dod/${s}-dod.md` : `../artefacts/${f.slug}/dod/`; } },
   { id: 'trace',               label: 'Trace',     skill: '/trace',               skillPath: 'skills/trace/SKILL.md',               criteria: 'Traceability chain intact across artefacts',                artefact: f => `../artefacts/${f.slug}/trace/trace.md` },
   { id: 'release',             label: 'Release',   skill: '/release',             skillPath: 'skills/release/SKILL.md',             criteria: 'Release bundle/checklist produced for deployment',          artefact: f => `../artefacts/${f.slug}/release/release-notes-technical.md` },
 ];
@@ -1046,6 +1066,7 @@ let mdVscodeBase   = '';        // workspace-root prefix stripped when building 
 let isDirty = false;
 let pipelineLayout = 'loop-grouped'; // 'flat' | 'loop-grouped'
 let governanceGateFilter = ''; // gate id for fail-focused filtering
+let governanceScope = 'feature'; // 'feature' | 'epic' | 'programme' — governance matrix granularity
 // Strict policy: warn → fail for regulated features.
 // Initialised from pipeline-state config.regulated once data loads.
 // User toggle persisted in localStorage so it survives page reloads.
@@ -1099,6 +1120,14 @@ function normalizeData(data) {
     });
   });
   (data.programmes || []).forEach(p => { p.slug = p.slug || p.id; });
+
+  // Build programme lookup: feature slug → programme object
+  const programmes = data.programmes || [];
+  (data.features || []).forEach(f => {
+    if (f.programme) return; // already set by /programme skill
+    const parent = programmes.find(p => (p.workstreams || []).indexOf(f.slug) !== -1);
+    if (parent) f.programme = parent.slug;
+  });
 
   // Auto-expand: open feature cards, epics, and task lists for any inner loop story
   // that is currently active (in an inner loop stage but not yet fully committed).
@@ -1297,6 +1326,10 @@ function filteredFeatures() {
     if (activeFilters.health && f.health !== activeFilters.health) return false;
     if (activeFilters.track  && f.track  !== activeFilters.track)  return false;
     if (activeFilters.team   && f.team   !== activeFilters.team)   return false;
+    if (activeFilters.programme) {
+      if (activeFilters.programme === '__none__') { if (f.programme) return false; }
+      else { if (f.programme !== activeFilters.programme) return false; }
+    }
     if (activeFilters.action) {
       const actionState = featureActionMeta(f).state;
       if (actionState !== activeFilters.action) return false;
@@ -1326,8 +1359,11 @@ function renderSummary(features) {
   const processing = features.filter(f => featureActionMeta(f).state === 'processing').length;
   const stories = features.flatMap(f => (f.epics || []).flatMap(e => e.stories || []));
   const relReady = stories.filter(s => s.releaseReady).length;
+  const progCount = allData.programmes ? allData.programmes.length : 0;
+  const inProg = progCount > 0 ? features.filter(f => f.programme).length : 0;
   bar.innerHTML = `
     <div class="summary-stat"><span class="val">${total}</span> features</div>
+    ${progCount > 0 ? `<div class="summary-stat"><span class="val" style="color:var(--purple)">${progCount}</span> programme${progCount !== 1 ? 's' : ''} <span style="font-size:10px;color:var(--muted)">(${inProg} feat.)</span></div>` : ''}
     <div class="summary-stat"><span class="val" style="color:var(--red)">${blocked}</span> blocked</div>
     <div class="summary-stat"><span class="val" style="color:var(--amber)">${amber}</span> at risk</div>
     <div class="summary-stat"><span class="val" style="color:var(--green)">${green}</span> moving</div>
@@ -1437,12 +1473,16 @@ function renderActionQueue(features) {
       <span class="aq-meta">${actionable.length} waiting</span>
     </div>
     <div class="aq-list">
-      ${actionable.slice(0, 12).map(({ feature, meta }) => `
+      ${actionable.slice(0, 12).map(({ feature, meta }) => {
+        const pObj = featureProgramme(feature);
+        const pLabel = pObj ? `<span class="programme-badge" style="margin-left:4px">${esc(pObj.name || pObj.slug)}</span>` : '';
+        return `
         <div class="aq-item">
           <span class="aq-state ${meta.state}">${meta.label}</span>
-          <button data-action="focus-feature" data-slug="${esc(feature.slug)}">${esc(feature.name)}</button>
+          <button data-action="focus-feature" data-slug="${esc(feature.slug)}">${esc(feature.name)}</button>${pLabel}
           <span class="aq-age">${formatAge(featureAgeMinutes(feature))}</span>
-        </div>`).join('')}
+        </div>`;
+      }).join('')}
     </div>`;
 }
 
@@ -1451,9 +1491,12 @@ function renderLoopStructure(features) {
   const innerCount = features.filter(f => loopType(f.stage) === 'inner').length;
   const outerStages = OUTER_LOOP_STAGE_ORDER.map(stageLabel).join(' -> ');
   const innerStages = INNER_LOOP_STAGE_ORDER.map(stageLabel).join(' -> ');
+  const programmes = (allData && allData.programmes) || [];
+  const progMeta = programmes.length > 0
+    ? ` <span style="font-size:10px;color:var(--purple);margin-left:6px">📦 ${programmes.length} prog.</span>` : '';
   document.getElementById('loop-structure').innerHTML = `
     <div class="loop-band outer">
-      <strong>Outer loop (${outerCount})</strong>
+      <strong>Outer loop (${outerCount})</strong>${progMeta}
       <span class="loop-stage-list">${outerStages}</span>
     </div>
     <div class="loop-band inner">
@@ -1585,7 +1628,31 @@ function renderOutcomes(features) {
     ob.innerHTML = '<div class="empty-state"><h2>No features match your filters</h2><p>Try clearing your filters to see all features.</p></div>';
     return;
   }
-  ob.innerHTML = features.map(f => outcomesFeatureHTML(f)).join('');
+  const programmes = (allData && allData.programmes) || [];
+  if (programmes.length > 0) {
+    // Group features by programme, then show ungrouped features
+    const grouped = programmes.map(function(p) {
+      const slugs = p.workstreams || [];
+      const members = slugs.length > 0
+        ? features.filter(f => slugs.indexOf(f.slug) !== -1)
+        : features.filter(f => f.programme === p.slug);
+      return { programme: p, features: members };
+    }).filter(g => g.features.length > 0);
+    const groupedSlugs = new Set(grouped.flatMap(g => g.features.map(f => f.slug)));
+    const ungrouped = features.filter(f => !groupedSlugs.has(f.slug));
+    ob.innerHTML = grouped.map(g => `
+      <div class="outcome-programme-group">
+        <div class="outcome-programme-header">
+          <span style="color:var(--purple);font-weight:600">📦 ${esc(g.programme.name || g.programme.slug)}</span>
+          <span style="font-size:11px;color:var(--muted)">${g.features.length} feature${g.features.length !== 1 ? 's' : ''}${g.programme.phase ? ' · ' + esc(g.programme.phase) : ''}</span>
+        </div>
+        ${g.features.map(f => outcomesFeatureHTML(f)).join('')}
+      </div>`).join('')
+      + (ungrouped.length > 0 ? (grouped.length > 0 ? '<div style="margin-top:12px;padding-top:8px;border-top:1px solid var(--border)"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">Standalone features</div></div>' : '')
+        + ungrouped.map(f => outcomesFeatureHTML(f)).join('') : '');
+  } else {
+    ob.innerHTML = features.map(f => outcomesFeatureHTML(f)).join('');
+  }
 }
 
 function renderLibrary(features) {
@@ -1716,7 +1783,11 @@ function renderStoryMap(features) {
     ? '<span class="label">Compare with</span><select id="story-map-compare-strategy" class="story-map-strategy-select">' + compareOptions + '</select>'
     : '';
 
+  const smProgObj = featureProgramme(feature);
+  const smProgTag = smProgObj ? '<span class="programme-badge">\ud83d\udce6 ' + esc(smProgObj.name || smProgObj.slug) + '</span>' : '';
+
   const toolbarHTML = '<div class="story-map-toolbar">'
+    + (smProgTag ? smProgTag : '')
     + '<span class="label">Feature</span>'
     + '<span class="tag">' + esc(feature.slug || feature.id || 'unknown') + '</span>'
     + '<span class="label">Strategy</span>'
@@ -1757,7 +1828,65 @@ function renderGovernance(features) {
     return;
   }
 
-  const rowsUnfiltered = features.map(f => ({
+  // Build rows at the chosen governance scope.
+  // 'feature' scope: one row per feature (default).
+  // 'epic' scope: one row per epic, with a synthetic feature wrapper scoped to that epic's stories.
+  // 'programme' scope: one row per programme, aggregating all workstream features.
+  let rowSubjects;
+  if (governanceScope === 'programme') {
+    const programmes = (allData && allData.programmes) || [];
+    if (programmes.length > 0) {
+      rowSubjects = programmes.map(function(p) {
+        // Collect all features that belong to this programme
+        const workstreamSlugs = p.workstreams || [];
+        const memberFeatures = workstreamSlugs.length > 0
+          ? features.filter(function(f) { return workstreamSlugs.indexOf(f.slug) !== -1; })
+          : features.filter(function(f) { return f.programme === p.slug; });
+        // Aggregate all epics from member features into a synthetic feature-like object
+        const allEpics = memberFeatures.flatMap(function(f) { return f.epics || []; });
+        return {
+          _isProgrammeRow: true,
+          slug: p.slug,
+          name: p.name || p.slug,
+          stage: p.phase || 'in-progress',
+          track: 'programme-workstream',
+          team: memberFeatures.map(function(f) { return f.team || ''; }).filter(Boolean).filter(function(v, i, a) { return a.indexOf(v) === i; }).join(', '),
+          regulated: memberFeatures.some(function(f) { return f.regulated; }),
+          complianceProfile: memberFeatures.some(function(f) { return f.complianceProfile === 'regulated'; }) ? 'regulated' : 'standard',
+          traceStatus: memberFeatures.every(function(f) { return f.traceStatus === 'passed'; }) ? 'passed' : (memberFeatures.some(function(f) { return f.traceStatus === 'has-findings'; }) ? 'has-findings' : null),
+          epics: allEpics,
+          _memberCount: memberFeatures.length,
+        };
+      });
+    } else {
+      // No programmes defined — fall back to feature scope
+      rowSubjects = features;
+    }
+  } else if (governanceScope === 'epic') {
+    rowSubjects = [];
+    features.forEach(function(f) {
+      (f.epics || []).forEach(function(e) {
+        rowSubjects.push({
+          // Synthetic feature-like object with only this epic's stories
+          _isEpicRow: true,
+          _parentFeature: f,
+          slug: f.slug,
+          name: (f.name || f.slug) + ' → ' + (e.name || e.slug),
+          stage: f.stage,
+          track: f.track,
+          team: f.team,
+          regulated: f.regulated,
+          complianceProfile: f.complianceProfile,
+          traceStatus: f.traceStatus,
+          epics: [e],
+        });
+      });
+    });
+  } else {
+    rowSubjects = features;
+  }
+
+  const rowsUnfiltered = rowSubjects.map(f => ({
     feature: f,
     gates: activeGovernanceGates.map(g => ({ gate: g, status: gateStatus(f, g.id) })),
   }));
@@ -1798,6 +1927,19 @@ function renderGovernance(features) {
     skillsBadgeHTML = '<span class="skill-source-badge default" title="Open via VS Code Live Server or GitHub Pages to load live criteria from SKILL.md files">&#128203; default criteria (serve to load live)</span>';
   }
 
+  // Compact chips: gate name + short criteria as tooltip
+  const gateRefChipsHTML = activeGovernanceGates.map(function(g) {
+    const live = skillLoaded(g.id);
+    const desc = skillCriteria(g.id) || g.criteria;
+    const badge = live ? 'live' : 'default';
+    return '<span class="gov-ref-chip" title="' + esc(desc) + '\n\nSkill: ' + esc(g.skill) + ' [' + badge + ']">' 
+      + '<span class="chip-label">' + esc(g.label) + '</span>'
+      + '<span class="chip-skill">' + esc(g.skill) + '</span>'
+      + '<span class="skill-source-badge ' + badge + ' chip-badge">' + badge + '</span>'
+      + '</span>';
+  }).join('');
+
+  // Full detail items (inside expandable details)
   const gateRefItemsHTML = activeGovernanceGates.map(function(g) {
     const live = skillLoaded(g.id);
     const desc = skillCriteria(g.id) || g.criteria;
@@ -1842,6 +1984,9 @@ function renderGovernance(features) {
   const policyNote      = governanceStrictPolicy ? 'Warn statuses for regulated features are treated as fail.' : 'Warn and fail are shown separately.';
   const policyBtnClass  = governanceStrictPolicy ? 'gov-btn active' : 'gov-btn';
   const policyBtnLabel  = 'Strict policy mode ' + (governanceStrictPolicy ? 'ON' : 'OFF');
+  const scopeLabels = { feature: 'Feature', epic: 'Epic', programme: 'Programme' };
+  const scopeBtnClass   = governanceScope !== 'feature' ? 'gov-btn active' : 'gov-btn';
+  const scopeBtnLabel   = 'Scope: ' + (scopeLabels[governanceScope] || 'Feature');
 
   // Compliance context banner — shows repo-level compliance posture from config
   let complianceBannerHTML = '';
@@ -1880,12 +2025,13 @@ function renderGovernance(features) {
   board.innerHTML = `
     ${complianceBannerHTML}
     <div class="gov-summary">
-      <span class="gov-pill">Features ${features.length}</span>
+      <span class="gov-pill">${scopeLabels[governanceScope] || 'Features'}s ${rowSubjects.length}</span>
       <span class="gov-pill pass">Pass ${passCount}</span>
       <span class="gov-pill warn">Warn ${warnCount}</span>
       <span class="gov-pill fail">Fail ${failCount}</span>
     </div>
     <div class="gov-controls">
+      <button class="${scopeBtnClass}" data-action="toggle-gov-scope">${scopeBtnLabel}</button>
       <button class="${policyBtnClass}" data-action="toggle-gov-policy">${policyBtnLabel}</button>
       <button class="gov-btn" data-action="export-gov-csv">Export CSV</button>
       ${clearFilterBtn}
@@ -1894,10 +2040,14 @@ function renderGovernance(features) {
     <div class="gov-summary">${gateFailPillsHTML}</div>
     <div class="gov-ref">
       <div class="gov-ref-header">
-        <h3>Gate Criteria Reference</h3>
+        <h3>Gate Criteria</h3>
         ${skillsBadgeHTML}
       </div>
-      <div class="gov-ref-grid">${gateRefItemsHTML}</div>
+      <div class="gov-ref-compact">${gateRefChipsHTML}</div>
+      <details class="gov-meta-ref" style="margin-top:8px">
+        <summary>Expand full gate criteria descriptions</summary>
+        <div class="gov-ref-grid" style="margin-top:8px">${gateRefItemsHTML}</div>
+      </details>
       <details class="gov-meta-ref">
         <summary>Pipeline authority skills (workflow &amp; org-mapping)</summary>
         <div class="gov-ref-grid" style="margin-top:8px">${metaRefItemsHTML}</div>
@@ -1905,7 +2055,7 @@ function renderGovernance(features) {
     </div>
     <div class="gov-matrix-wrap">
       <table class="gov-matrix">
-        <thead><tr><th>Feature</th>${colHeadersHTML}</tr></thead>
+        <thead><tr><th>${scopeLabels[governanceScope] || 'Feature'}</th>${colHeadersHTML}</tr></thead>
         <tbody>${matrixRowsHTML}</tbody>
       </table>
     </div>
@@ -1913,11 +2063,14 @@ function renderGovernance(features) {
 }
 
 function governanceRowHTML(feature, gateResults) {
+  const metaLine = feature._isProgrammeRow
+    ? esc(feature.slug) + ' · ' + (feature._memberCount || 0) + ' workstream' + ((feature._memberCount || 0) !== 1 ? 's' : '')
+    : esc(feature.slug) + ' · ' + esc(stageLabel(feature.stage));
   return `
     <tr>
       <td class="gov-feature-cell">
         <div class="gov-feature-name">${esc(feature.name)}</div>
-        <div class="gov-feature-meta">${esc(feature.slug)} · ${esc(stageLabel(feature.stage))}</div>
+        <div class="gov-feature-meta">${metaLine}</div>
       </td>
       ${gateResults.map(gr => `
         <td class="gov-cell">
@@ -2038,13 +2191,14 @@ function exportGovernanceCsv(features) {
     return { feature: f, gateStatuses };
   });
 
-  const header = ['feature_slug', 'feature_name', 'track', 'team', 'stage', ...activeGovernanceGates.map(g => `${g.id}_status`)];
+  const header = ['feature_slug', 'feature_name', 'programme', 'track', 'team', 'stage', ...activeGovernanceGates.map(g => `${g.id}_status`)];
   const lines = [header.join(',')];
 
   rows.forEach(r => {
     const values = [
       r.feature.slug,
       r.feature.name,
+      r.feature.programme || '',
       r.feature.track || '',
       r.feature.team || '',
       r.feature.stage || '',
@@ -2145,9 +2299,15 @@ function loopLaneHTML(kind, title, cardCount, stages, features, stageIdx, showPr
   });
   if (visibleStages.length === 0) return '';
   const previewTag = isPreview ? ' <span style="font-size:9px;color:var(--muted);text-transform:none;font-weight:400;font-style:italic">upcoming</span>' : '';
+  // Programme breakdown in lane meta
+  const progBreakdown = (function() {
+    if (!allData || !(allData.programmes || []).length) return '';
+    const inProg = activeFeatures.filter(f => f.programme).length;
+    return inProg > 0 ? ' · ' + inProg + ' in prog.' : '';
+  })();
   const metaLabel = isPreview
     ? `${visibleStages.length} stage${visibleStages.length !== 1 ? 's' : ''} · awaiting entry`
-    : `${cardCount} active · ${visibleStages.length} stage${visibleStages.length !== 1 ? 's' : ''}`;
+    : `${cardCount} active · ${visibleStages.length} stage${visibleStages.length !== 1 ? 's' : ''}${progBreakdown}`;
   return `
     <section class="loop-lane${isPreview ? ' loop-lane-preview' : ''}">
       <div class="loop-lane-header">
@@ -2216,6 +2376,8 @@ function featureCardHTML(f) {
   const allStories = epics.flatMap(e => e.stories || []);
   const action = featureActionMeta(f);
   const teamTag = f.team ? `<span class="tag">${esc(f.team)}</span>` : '';
+  const progObj = featureProgramme(f);
+  const progTag = progObj ? `<span class="programme-badge" title="Programme: ${esc(progObj.name || progObj.slug)}">📦 ${esc(progObj.name || progObj.slug)}</span>` : '';
   const blocker = f.blocker && f.health === 'red'
     ? `<div class="blocker-notice">🚫 ${esc(f.blocker)}</div>` : '';
   const stageArts = (STAGE_ARTEFACTS[f.stage] || (() => []))(f);
@@ -2244,6 +2406,7 @@ function featureCardHTML(f) {
       </div>
       ${stageArts.length > 0 && loopType(f.stage) !== 'inner' ? `<div class="card-artefacts"><span class="label">Docs</span>${stageArts.map(a => `<a class="drawer-link" href="${esc(a.path)}">${esc(a.label)}</a>`).join('')}</div>` : ''}
       <div class="meta">
+        ${progTag}
         ${loopStageBadge(f.stage)}
         ${metaStageBadge(f.stage)}
         ${teamTag}
@@ -2457,6 +2620,7 @@ function openDrawer(featureSlug, epicSlug, storySlug) {
 
     <div class="drawer-section">
       <h3>Context</h3>
+      ${feature.programme ? `<div class="drawer-row"><span class="label">Programme</span><span style="color:var(--purple)">${esc((featureProgramme(feature) || {}).name || feature.programme)}</span></div>` : ''}
       <div class="drawer-row"><span class="label">Feature</span><span>${esc(feature.name)}</span></div>
       <div class="drawer-row"><span class="label">Epic</span><span>${esc(epic.name || epic.slug)}</span></div>
       <div class="drawer-row"><span class="label">Track</span><span>${trackLabel(feature.track)}</span></div>
@@ -2954,6 +3118,13 @@ function handleBoardClick(e) {
       render();
       return;
     }
+    const toggleGovScope = e.target.closest('[data-action="toggle-gov-scope"]');
+    if (toggleGovScope) {
+      const cycle = { feature: 'epic', epic: 'programme', programme: 'feature' };
+      governanceScope = cycle[governanceScope] || 'feature';
+      render();
+      return;
+    }
     const exportGovCsv = e.target.closest('[data-action="export-gov-csv"]');
     if (exportGovCsv) {
       exportGovernanceCsv(filteredFeatures());
@@ -3029,6 +3200,17 @@ function populateTeamFilter() {
   const current = sel.value;
   const teams = [...new Set(allData.features.map(f => f.team).filter(Boolean))].sort();
   sel.innerHTML = `<option value="">All</option>` + teams.map(t => `<option value="${esc(t)}" ${t===current?'selected':''}>${esc(t)}</option>`).join('');
+
+  // Populate programme filter
+  const pSel = document.getElementById('filter-programme');
+  const pCurrent = pSel.value;
+  const programmes = allData.programmes || [];
+  if (programmes.length > 0) {
+    pSel.closest('.filter-group').style.display = '';
+    pSel.innerHTML = `<option value="">All</option><option value="__none__" ${pCurrent==='__none__'?'selected':''}>No programme</option>` + programmes.map(p => `<option value="${esc(p.slug)}" ${p.slug===pCurrent?'selected':''}>${esc(p.name || p.slug)}</option>`).join('');
+  } else {
+    pSel.closest('.filter-group').style.display = 'none';
+  }
 }
 
 function initFilters() {
@@ -3037,6 +3219,9 @@ function initFilters() {
     document.getElementById(`filter-${k}`).addEventListener('change', e => {
       activeFilters[k] = e.target.value; render();
     });
+  });
+  document.getElementById('filter-programme').addEventListener('change', e => {
+    activeFilters.programme = e.target.value; render();
   });
   document.getElementById('filter-search').addEventListener('input', e => {
     activeFilters.search = e.target.value; render();
@@ -3428,6 +3613,11 @@ function trackLabel(t) {
   return t ? t : 'Std';
 }
 
+function featureProgramme(f) {
+  if (!allData || !f.programme) return null;
+  return (allData.programmes || []).find(p => p.slug === f.programme) || { slug: f.programme, name: f.programme };
+}
+
 function hasHighFindings(feature) {
   const stories = allStories(feature);
   return stories.some(s => (s.highFindings || 0) > 0);
@@ -3440,6 +3630,11 @@ function isReleaseReady(feature) {
 
 function allStories(feature) {
   return (feature.epics || []).flatMap(e => e.stories || []);
+}
+
+function firstStorySlug(feature) {
+  const stories = allStories(feature);
+  return stories.length > 0 ? stories[0].slug : null;
 }
 
 function featureTimestamp(feature) {

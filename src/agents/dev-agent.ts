@@ -82,6 +82,7 @@ async function main(): Promise<void> {
     changelogEntry: 'S1: three-agent bare loop (filesystem queue, ADR-002)',
   };
   await runDevAgent({ queueRoot, taskId, registryPath, tracePath, output });
+  process.stdout.write('Dev agent complete.\n');
 }
 
 if (require.main === module) {
