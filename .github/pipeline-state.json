@@ -13,6 +13,7 @@
       "worktree": ".worktrees/s7-self-service-packaging",
       "branch": "master",
       "releaseReady": false,
+      "traceStatus": "has-findings",
       "epics": [
         {
           "slug": "agent-loop-and-governance-layer",
