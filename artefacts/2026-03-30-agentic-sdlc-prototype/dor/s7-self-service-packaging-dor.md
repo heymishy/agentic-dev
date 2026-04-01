@@ -97,4 +97,12 @@ Oversight level: Medium
 
 **Oversight level:** Medium
 **Sign-off required:** No
-**DoR status:** PROCEED
+**DoR status:** PROCEED (AC4/AC5 deferred — participant-blocked)
+
+---
+
+## Deferred ACs
+
+**AC4** and **AC5** require a dry-run participant who has never seen the prototype. These ACs are intentionally deferred until a participant is available — same pattern as S6 AC1/AC2 (DL-005). Implementation of all code deliverables (queue-server, Dockerfile, docker-compose.yml, README restructure, structural unit tests) can proceed immediately. The branch stays open pending the dry run.
+
+The naming note below is also recorded here for the coder: the HTTP board server MUST be named `queue-server`, `board-server`, or `viz-server` — NOT "Mission Control". Mission Control is the evaluated third-party platform (see discovery.md and ADR). Using that name in the codebase would create confusion for anyone reading the code later.
