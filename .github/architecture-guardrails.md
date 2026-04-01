@@ -522,4 +522,124 @@ Not applicable. If TypeScript is replaced entirely (e.g. the prototype is ported
   category: anti-pattern
   label: "Directly mutating pipeline-state.json outside skills"
   section: Anti-Patterns
+
+- id: ADR-005
+  category: adr
+  label: "Filesystem folder-move is the queue implementation"
+  section: Active ADRs
+
+- id: ADR-006
+  category: adr
+  label: "Trace log is append-only — fs.appendFileSync only"
+  section: Active ADRs
+
+- id: ADR-007
+  category: adr
+  label: "TypeScript strict mode — mandatory, no exceptions"
+  section: Active ADRs
+
+- id: PROTO-AGENT-01
+  category: mandatory-constraint
+  label: "Agent main() guarded by require.main === module"
+  section: Agent Layer
+
+- id: PROTO-AGENT-02
+  category: mandatory-constraint
+  label: "Agent invocation via spawnSync with explicit args array"
+  section: Agent Layer
+
+- id: PROTO-AGENT-03
+  category: mandatory-constraint
+  label: "Assurance agent has no shared in-memory state with dev/review agents"
+  section: Agent Layer
+
+- id: PROTO-AGENT-04
+  category: mandatory-constraint
+  label: "Agent exits non-zero when verdict is escalate"
+  section: Agent Layer
+
+- id: PROTO-REGISTRY-01
+  category: mandatory-constraint
+  label: "All skill paths resolved from skills-registry.json — no hardcoded paths"
+  section: Skills Registry
+
+- id: PROTO-REGISTRY-02
+  category: mandatory-constraint
+  label: "Skills read from local filesystem only — no network fetch"
+  section: Skills Registry
+
+- id: PROTO-TRACE-01
+  category: mandatory-constraint
+  label: "All trace writes use fs.appendFileSync — no truncate/overwrite"
+  section: Trace Log
+
+- id: PROTO-TRACE-02
+  category: mandatory-constraint
+  label: "Trace entries conform to src/types/trace.ts interface"
+  section: Trace Log
+
+- id: PROTO-TRACE-03
+  category: mandatory-constraint
+  label: "Every trace entry contains all required fields including promptHash and hashAlgorithm"
+  section: Trace Log
+
+- id: PROTO-TRACE-04
+  category: mandatory-constraint
+  label: "Trace field names are plain English — no abbreviations requiring a data dictionary"
+  section: Trace Log
+
+- id: PROTO-QUEUE-01
+  category: mandatory-constraint
+  label: "Queue transitions are fs.renameSync folder-moves only"
+  section: Queue
+
+- id: PROTO-QUEUE-02
+  category: mandatory-constraint
+  label: "Every queue transition recorded in queue/history.jsonl"
+  section: Queue
+
+- id: PROTO-QUEUE-03
+  category: mandatory-constraint
+  label: "Queue folders created by init-queue.js only — not by agent scripts"
+  section: Queue
+
+- id: PROTO-AP-01
+  category: anti-pattern
+  label: "Hardcoded skill file path in agent script"
+  section: Prototype Anti-Patterns
+
+- id: PROTO-AP-02
+  category: anti-pattern
+  label: "execSync shell string for agent invocation in tests"
+  section: Prototype Anti-Patterns
+
+- id: PROTO-AP-03
+  category: anti-pattern
+  label: "Agent main() executing at module import time (no guard)"
+  section: Prototype Anti-Patterns
+
+- id: PROTO-AP-04
+  category: anti-pattern
+  label: "fs.writeFileSync on the trace log"
+  section: Prototype Anti-Patterns
+
+- id: PROTO-AP-05
+  category: anti-pattern
+  label: "Inline trace field definitions outside src/types/trace.ts"
+  section: Prototype Anti-Patterns
+
+- id: PROTO-AP-06
+  category: anti-pattern
+  label: "any type in exported function signatures"
+  section: Prototype Anti-Patterns
+
+- id: PROTO-AP-07
+  category: anti-pattern
+  label: "Shared state between agents outside of trace log file"
+  section: Prototype Anti-Patterns
+
+- id: PROTO-AP-08
+  category: anti-pattern
+  label: "Credentials or org data in any committed file"
+  section: Prototype Anti-Patterns
 ```
