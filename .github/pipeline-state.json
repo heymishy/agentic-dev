@@ -9,9 +9,9 @@
       "track": "standard",
       "stage": "branch-setup",
       "health": "green",
-      "updatedAt": "2026-03-31T10:00:00Z",
-      "worktree": ".worktrees/s4-assurance-agent-cold-start",
-      "branch": "feature/s4-assurance-agent-cold-start",
+      "updatedAt": "2026-04-01T12:00:00Z",
+      "worktree": ".worktrees/s6-trace-schema-tamper-evidence",
+      "branch": "feature/s6-trace-schema-tamper-evidence",
       "releaseReady": false,
       "epics": [
         {
@@ -115,11 +115,15 @@
             {
               "slug": "s6-trace-schema-tamper-evidence",
               "name": "S6: Trace schema finalised — tamper-evidence and legibility",
-              "stage": "definition-of-ready",
+              "stage": "branch-setup",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "testPlan": { "status": "written", "totalTests": 1, "passing": 0, "acTotal": 5, "acVerified": 0 }
+              "worktree": ".worktrees/s6-trace-schema-tamper-evidence",
+              "branch": "feature/s6-trace-schema-tamper-evidence",
+              "updatedAt": "2026-04-01T12:00:00Z",
+              "ac1BlockedReason": "DL-005: non-engineer participant not yet arranged — AC1/AC2 deferred",
+              "testPlan": { "status": "partial", "totalTests": 63, "passing": 63, "acTotal": 5, "acVerified": 3, "deferredACs": ["AC1", "AC2"] }
             },
             {
               "slug": "s7-self-service-packaging",
@@ -199,9 +203,9 @@
           "name": "Trace log integrity — tamper-evidence",
           "target": "All trace entries append-only after assurance record written; modification is blocked or detectable",
           "baseline": "Not yet established — no trace log exists",
-          "signal": "not-yet-measured",
-          "lastMeasured": null,
-          "evidence": null,
+          "signal": "on-track",
+          "lastMeasured": "2026-04-01",
+          "evidence": "S6 Protocol 2 PASS: SHA-256 entry hashes stored in AssuranceRecord; re-verification detected tampered criteriaResults (fail→pass) and produced escalate verdict with ENTRY_INTEGRITY criterion fail. No false positive on unmodified re-run. Automated test: tests/integration/s6-tamper-evidence.integration.test.ts (2/2 passing). Results in verification/m6-test-results.md.",
           "contributingStories": ["s2-dev-agent-skill-trace", "s6-trace-schema-tamper-evidence"]
         },
         {
