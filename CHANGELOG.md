@@ -6,6 +6,35 @@ All notable changes to this repository will be documented in this file.
 
 ---
 
+## [0.5.15] — 2026-04-01
+
+### Added
+
+#### Full-pipeline governance gates
+
+The governance matrix now covers the complete pipeline lifecycle — from discovery through release — instead of only steps 4–9.
+
+**5 new gates:**
+- **Discovery** — tracks artefact approval; passes once feature progresses past discovery stage, or when `feature.discoveryStatus === 'approved'`
+- **Benefit Metric** — checks `feature.metrics` array seeded by `/benefit-metric` skill; shows metric count when defined
+- **Definition** — verifies epics and stories exist; shows epic/story counts
+- **Architecture** — architecture guardrails compliance (Category E of `/review`); supports direct `feature.architectureStatus` evidence or falls back to review status proxy
+- **Decisions** — risk acceptances and scope decisions logged; supports `feature.decisionsLogged` evidence or DoR stage proxy
+
+Gate order now follows the pipeline: Discovery → Benefit Metric → Definition → Review → Architecture → Test Plan → DoR → Decisions → Verify → DoD → Trace → Release (12 gates total).
+
+### Fixed
+
+#### Artefact link 404s in governance matrix
+
+Artefact links are now hidden when a gate status is N/A. Previously, clicking an artefact link for a gate the feature hadn't reached yet would open the markdown viewer to a 404 error because the file doesn't exist yet.
+
+#### `firstEpicSlug()` helper
+
+Added `firstEpicSlug(feature)` helper for the Definition gate artefact path resolution, matching the existing `firstStorySlug()` pattern.
+
+---
+
 ## [0.5.14] — 2026-04-01
 
 ### Improved

@@ -1018,13 +1018,18 @@ const INNER_LOOP_STAGES = new Set(INNER_LOOP_STAGE_ORDER);
 const PIPELINE_STAGE_ORDER = ['ideation', 'discovery', 'benefit-metric', 'definition', 'spike', 'review', 'test-plan', 'definition-of-ready', 'branch-setup', 'implementation-plan', 'subagent-execution', 'implementation-review', 'verify-completion', 'branch-complete', 'definition-of-done', 'trace', 'release-pending', 'released'];
 
 const DEFAULT_GOVERNANCE_GATES = [
-  { id: 'review',              label: 'Review',    skill: '/review',              skillPath: 'skills/review/SKILL.md',              criteria: 'No HIGH findings before progression',                      artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/review/${s}-review-1.md` : `../artefacts/${f.slug}/review/`; } },
-  { id: 'test-plan',           label: 'Test Plan', skill: '/test-plan',           skillPath: 'skills/test-plan/SKILL.md',           criteria: 'Failing tests and verification script prepared',            artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/test-plans/${s}-test-plan.md` : `../artefacts/${f.slug}/test-plans/`; } },
-  { id: 'definition-of-ready', label: 'DoR',       skill: '/definition-of-ready', skillPath: 'skills/definition-of-ready/SKILL.md', criteria: 'All hard blocks pass and sign-off complete',                artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/dor/${s}-dor.md` : `../artefacts/${f.slug}/dor/`; } },
-  { id: 'verify-completion',   label: 'Verify',    skill: '/verify-completion',   skillPath: 'skills/verify-completion/SKILL.md',   criteria: 'Fresh evidence run before completion claims',               artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/verification-scripts/${s}-verification.md` : `../artefacts/${f.slug}/verification-scripts/`; } },
-  { id: 'definition-of-done',  label: 'DoD',       skill: '/definition-of-done',  skillPath: 'skills/definition-of-done/SKILL.md',  criteria: 'Post-merge AC/test coverage validated',                     artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/dod/${s}-dod.md` : `../artefacts/${f.slug}/dod/`; } },
-  { id: 'trace',               label: 'Trace',     skill: '/trace',               skillPath: 'skills/trace/SKILL.md',               criteria: 'Traceability chain intact across artefacts',                artefact: f => `../artefacts/${f.slug}/trace/trace.md` },
-  { id: 'release',             label: 'Release',   skill: '/release',             skillPath: 'skills/release/SKILL.md',             criteria: 'Release bundle/checklist produced for deployment',          artefact: f => `../artefacts/${f.slug}/release/release-notes-technical.md` },
+  { id: 'discovery',           label: 'Discovery',      skill: '/discovery',           skillPath: 'skills/discovery/SKILL.md',           criteria: 'Discovery artefact approved before progression',             artefact: f => `../artefacts/${f.slug}/discovery.md` },
+  { id: 'benefit-metric',      label: 'Benefit Metric', skill: '/benefit-metric',      skillPath: 'skills/benefit-metric/SKILL.md',      criteria: 'Measurable outcomes defined with targets and baselines',     artefact: f => `../artefacts/${f.slug}/benefit-metric.md` },
+  { id: 'definition',          label: 'Definition',     skill: '/definition',          skillPath: 'skills/definition/SKILL.md',          criteria: 'Epics and stories decomposed from discovery',                artefact: f => { const e = firstEpicSlug(f); return e ? `../artefacts/${f.slug}/epics/${e}.md` : `../artefacts/${f.slug}/epics/`; } },
+  { id: 'review',              label: 'Review',         skill: '/review',              skillPath: 'skills/review/SKILL.md',              criteria: 'No HIGH findings before progression',                        artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/review/${s}-review-1.md` : `../artefacts/${f.slug}/review/`; } },
+  { id: 'architecture',        label: 'Architecture',   skill: '/review',              skillPath: 'skills/review/SKILL.md',              criteria: 'Architecture guardrails compliance verified (Category E)',   artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/review/${s}-review-1.md` : `../artefacts/${f.slug}/review/`; } },
+  { id: 'test-plan',           label: 'Test Plan',      skill: '/test-plan',           skillPath: 'skills/test-plan/SKILL.md',           criteria: 'Failing tests and verification script prepared',             artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/test-plans/${s}-test-plan.md` : `../artefacts/${f.slug}/test-plans/`; } },
+  { id: 'definition-of-ready', label: 'DoR',            skill: '/definition-of-ready', skillPath: 'skills/definition-of-ready/SKILL.md', criteria: 'All hard blocks pass and sign-off complete',                 artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/dor/${s}-dor.md` : `../artefacts/${f.slug}/dor/`; } },
+  { id: 'decisions',           label: 'Decisions',      skill: '/decisions',           skillPath: 'skills/decisions/SKILL.md',           criteria: 'Risk acceptances and scope decisions logged',                artefact: f => `../artefacts/${f.slug}/decisions.md` },
+  { id: 'verify-completion',   label: 'Verify',         skill: '/verify-completion',   skillPath: 'skills/verify-completion/SKILL.md',   criteria: 'Fresh evidence run before completion claims',                artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/verification-scripts/${s}-verification.md` : `../artefacts/${f.slug}/verification-scripts/`; } },
+  { id: 'definition-of-done',  label: 'DoD',            skill: '/definition-of-done',  skillPath: 'skills/definition-of-done/SKILL.md',  criteria: 'Post-merge AC/test coverage validated',                      artefact: f => { const s = firstStorySlug(f); return s ? `../artefacts/${f.slug}/dod/${s}-dod.md` : `../artefacts/${f.slug}/dod/`; } },
+  { id: 'trace',               label: 'Trace',          skill: '/trace',               skillPath: 'skills/trace/SKILL.md',               criteria: 'Traceability chain intact across artefacts',                 artefact: f => `../artefacts/${f.slug}/trace/trace.md` },
+  { id: 'release',             label: 'Release',        skill: '/release',             skillPath: 'skills/release/SKILL.md',             criteria: 'Release bundle/checklist produced for deployment',           artefact: f => `../artefacts/${f.slug}/release/release-notes-technical.md` },
 ];
 
 // Active gate set — starts as defaults, overridden by config.governance.gates from pipeline-state.json.
@@ -2075,7 +2080,7 @@ function governanceRowHTML(feature, gateResults) {
       ${gateResults.map(gr => `
         <td class="gov-cell">
           <span class="gov-status ${gr.status.state}${gr.status.policyEscalated ? ' policy' : ''}">${govStateIcon(gr.status.state)} ${esc(gr.status.label)}</span>
-          ${gr.status.artefact ? `<a class="drawer-link gov-link" href="${esc(gr.status.artefact)}">artefact</a>` : ''}
+          ${gr.status.artefact && gr.status.state !== 'na' ? `<a class="drawer-link gov-link" href="${esc(gr.status.artefact)}">artefact</a>` : ''}
         </td>`).join('')}
     </tr>`;
 }
@@ -2130,7 +2135,7 @@ function gateStatus(feature, gateId) {
 
   if (gateId === 'test-plan') {
     if (stories.length === 0) status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
-    const written = stories.filter(s => s.testPlan && ['written','all-passing','complete','partial'].includes(s.testPlan.status) && (s.testPlan.totalTests || 0) > 0).length;
+    const written = stories.filter(s => s.testPlan && s.testPlan.status === 'written' && (s.testPlan.totalTests || 0) > 0).length;
     if (written === stories.length) status = { state: 'pass', label: 'Written', artefact: artefactFor(gateId) };
     else if (written > 0) status = { state: 'warn', label: 'Partial', artefact: artefactFor(gateId) };
     else status = { state: 'fail', label: 'Missing', artefact: artefactFor(gateId) };
@@ -2180,6 +2185,80 @@ function gateStatus(feature, gateId) {
       status = { state: 'warn', label: 'Released (no evidence)', artefact: artefactFor(gateId) };
     else if (feature.stage === 'release-pending') status = { state: 'warn', label: 'Pending', artefact: artefactFor(gateId) };
     else status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+  }
+
+  // ── Early-pipeline gates ─────────────────────────────────────────────────
+  if (gateId === 'discovery') {
+    // Evidence: feature has progressed past discovery (implies approved).
+    // Direct evidence field: feature.discoveryStatus (written by /discovery if customised).
+    if (feature.discoveryStatus === 'approved' || hasReachedStage(feature, 'benefit-metric'))
+      status = { state: 'pass', label: 'Approved', artefact: artefactFor(gateId) };
+    else if (feature.stage === 'discovery')
+      status = { state: 'warn', label: 'In progress', artefact: artefactFor(gateId) };
+    else if (feature.stage === 'ideation')
+      status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+    else
+      status = { state: 'pass', label: 'Approved', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'benefit-metric') {
+    // Evidence: feature.metrics array seeded by /benefit-metric skill.
+    const hasMetrics = Array.isArray(feature.metrics) && feature.metrics.length > 0;
+    if (hasMetrics && hasReachedStage(feature, 'definition'))
+      status = { state: 'pass', label: `${feature.metrics.length} metric${feature.metrics.length !== 1 ? 's' : ''} defined`, artefact: artefactFor(gateId) };
+    else if (hasMetrics)
+      status = { state: 'warn', label: 'Defined', artefact: artefactFor(gateId) };
+    else if (hasReachedStage(feature, 'definition'))
+      status = { state: 'warn', label: 'No metrics (stage assumed)', artefact: artefactFor(gateId) };
+    else if (hasReachedStage(feature, 'benefit-metric'))
+      status = { state: 'warn', label: 'In progress', artefact: artefactFor(gateId) };
+    else
+      status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'definition') {
+    // Evidence: epics and stories arrays populated by /definition skill.
+    const epics = feature.epics || [];
+    const storyCount = allStories(feature).length;
+    if (storyCount > 0 && hasReachedStage(feature, 'review'))
+      status = { state: 'pass', label: `${epics.length} epic${epics.length !== 1 ? 's' : ''}, ${storyCount} stor${storyCount !== 1 ? 'ies' : 'y'}`, artefact: artefactFor(gateId) };
+    else if (storyCount > 0)
+      status = { state: 'warn', label: 'In progress', artefact: artefactFor(gateId) };
+    else if (hasReachedStage(feature, 'definition'))
+      status = { state: 'warn', label: 'No stories yet', artefact: artefactFor(gateId) };
+    else
+      status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'architecture') {
+    // Architecture guardrails compliance — Category E of /review.
+    // Evidence field: feature.architectureStatus (written by /review or custom hook).
+    // Falls back to review gate as proxy: if review passed, Category E was evaluated.
+    if (feature.architectureStatus === 'compliant')
+      status = { state: 'pass', label: 'Compliant', artefact: artefactFor(gateId) };
+    else if (feature.architectureStatus === 'has-findings')
+      status = { state: 'fail', label: 'Has findings', artefact: artefactFor(gateId) };
+    else if (stories.length > 0 && stories.every(s => s.reviewStatus === 'passed'))
+      status = { state: 'pass', label: 'Reviewed (Category E)', artefact: artefactFor(gateId) };
+    else if (stories.some(s => s.reviewStatus))
+      status = { state: 'warn', label: 'Review in progress', artefact: artefactFor(gateId) };
+    else if (hasReachedStage(feature, 'review'))
+      status = { state: 'warn', label: 'Pending', artefact: artefactFor(gateId) };
+    else
+      status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
+  }
+
+  if (gateId === 'decisions') {
+    // Evidence field: feature.decisionsLogged (boolean or count).
+    // Falls back to DoR stage proxy — by DoR, decisions should be captured.
+    if (feature.decisionsLogged === true || (typeof feature.decisionsLogged === 'number' && feature.decisionsLogged > 0))
+      status = { state: 'pass', label: 'Logged', artefact: artefactFor(gateId) };
+    else if (hasReachedStage(feature, 'branch-setup'))
+      status = { state: 'warn', label: 'Not confirmed', artefact: artefactFor(gateId) };
+    else if (hasReachedStage(feature, 'definition-of-ready'))
+      status = { state: 'warn', label: 'Pending', artefact: artefactFor(gateId) };
+    else
+      status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
   }
 
   return applyGovernancePolicy(feature, status);
@@ -3635,6 +3714,11 @@ function allStories(feature) {
 function firstStorySlug(feature) {
   const stories = allStories(feature);
   return stories.length > 0 ? stories[0].slug : null;
+}
+
+function firstEpicSlug(feature) {
+  const epics = feature.epics || [];
+  return epics.length > 0 ? epics[0].slug : null;
 }
 
 function featureTimestamp(feature) {
