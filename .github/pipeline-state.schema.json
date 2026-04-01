@@ -55,6 +55,20 @@
         }
       }
     },
+    "guardrailsRegistry": {
+      "type": "array",
+      "description": "Static registry of all guardrail items defined in architecture-guardrails.md. Embedded here so the viz can display the compliance matrix on file:// without a fetch. Mirrors the yaml guardrails-registry block in architecture-guardrails.md — keep in sync when adding/removing guardrail items.",
+      "items": {
+        "type": "object",
+        "required": ["id", "category", "label", "section"],
+        "properties": {
+          "id":       { "type": "string", "description": "Unique guardrail identifier, e.g. MC-SEC-01, ADR-001, PROTO-AGENT-01" },
+          "category": { "type": "string", "enum": ["mandatory-constraint", "adr", "nfr", "compliance-framework", "pattern", "anti-pattern"], "description": "Source category" },
+          "label":    { "type": "string", "description": "Short human-readable description of the guardrail" },
+          "section":  { "type": "string", "description": "Section heading in architecture-guardrails.md where this item lives" }
+        }
+      }
+    },
     "features": {
       "type": "array",
       "description": "All features and workstreams — both programme and standalone.",

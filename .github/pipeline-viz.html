@@ -2309,8 +2309,14 @@ function gateStatus(feature, gateId) {
 
 async function fetchGuardrailsRegistry() {
   if (guardrailsRegistryCache) return guardrailsRegistryCache;
+  // Prefer registry embedded in pipeline-state.json — works on file:// with no fetch needed.
+  // Falls back to fetching the .md file when served from a local server or GitHub Pages.
+  if (allData && Array.isArray(allData.guardrailsRegistry) && allData.guardrailsRegistry.length > 0) {
+    guardrailsRegistryCache = allData.guardrailsRegistry;
+    return guardrailsRegistryCache;
+  }
   try {
-    const res = await fetch('../architecture-guardrails.md');
+    const res = await fetch('./architecture-guardrails.md');
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     // Extract the ```yaml guardrails-registry ... ``` fenced block
