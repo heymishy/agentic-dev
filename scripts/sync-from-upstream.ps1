@@ -2,7 +2,8 @@
 # sync-from-upstream.ps1
 # Pulls the latest skills, templates, viz, and tooling from skills-upstream.
 # Leaves untouched: artefacts/, contexts/, .github/context.yml,
-#                   .github/pipeline-state.json, config.yml
+#                   .github/pipeline-state.json, config.yml,
+#                   README.md (this repo has its own README distinct from the skills-pipeline README)
 
 param(
   [string]$Remote   = "skills-upstream",
@@ -29,7 +30,7 @@ $changed = git diff --name-only HEAD "$Remote/$Branch" -- `
   .github/copilot-instructions.md .github/pipeline-state.schema.json `
   .github/architecture-guardrails.md .github/pull_request_template.md `
   .github/standards/ .github/workflows/ `
-  README.md CHANGELOG.md
+  CHANGELOG.md
 
 if (-not $changed) {
   Write-Host "Already up to date." -ForegroundColor Green
@@ -51,7 +52,7 @@ git checkout "$Remote/$Branch" -- `
   .github/copilot-instructions.md .github/pipeline-state.schema.json `
   .github/architecture-guardrails.md .github/pull_request_template.md `
   .github/standards/ .github/workflows/ `
-  README.md CHANGELOG.md
+  CHANGELOG.md
 
 # ── 5. Commit ─────────────────────────────────────────────────────────────────
 $date = Get-Date -Format "yyyy-MM-dd"
