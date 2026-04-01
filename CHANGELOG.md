@@ -6,6 +6,25 @@ All notable changes to this repository will be documented in this file.
 
 ---
 
+## [0.5.16] — 2026-04-02
+
+### Changed
+
+#### Rename README.md → skill-pipeline-instructions.md
+
+README.md previously held the pipeline documentation, which caused merge conflicts when consumer repos synced from upstream (every repo has its own README.md). The pipeline docs now live in `skill-pipeline-instructions.md`, freeing README.md for each consumer repo's own project documentation.
+
+**Updated across all sync/install/bootstrap surfaces:**
+- `scripts/sync-from-upstream.ps1` — diff and checkout paths
+- `scripts/sync-from-upstream.sh` — PATHS array
+- `scripts/install.ps1` — step 1 core files, upstream block sync_paths, sync instructions
+- `scripts/install.sh` — step 1 core files, upstream block sync_paths, sync instructions
+- `.github/copilot-instructions.md` — sync command example
+- `.github/scripts/check-changelog-readme.js` — advisory now checks `skill-pipeline-instructions.md`
+- All 4 context.yml files (`contexts/personal.yml`, `contexts/work.yml`, `.github/contexts/personal.yml`, `.github/contexts/work.yml`) — `sync_paths` updated
+
+---
+
 ## [0.5.15] — 2026-04-01
 
 ### Added
