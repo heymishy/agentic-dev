@@ -6,6 +6,60 @@ All notable changes to this repository will be documented in this file.
 
 ---
 
+## [0.5.14] — 2026-04-01
+
+### Improved
+
+#### Programme concept applied consistently across all viz views
+
+Programme membership is now surfaced in every view, not just governance:
+
+- **Feature cards** — purple 📦 badge showing programme name in the meta row
+- **Summary bar** — programme count with member feature count when programmes exist
+- **Story drawer** — programme shown in context section when feature belongs to one
+- **Filter bar** — new Programme filter dropdown (auto-hides when no programmes defined); includes "No programme" option
+- **Action queue** — programme badge next to feature name for programme members
+- **Outcomes view** — features grouped under programme headers with phase indicators; standalone features shown separately below
+- **Board / Loop lanes** — programme member count in loop lane meta; feature cards show programme badge
+- **Story map toolbar** — programme badge shown alongside feature slug
+- **Loop structure** — programme count indicator when programmes exist
+- **CSV export** — new `programme` column in governance CSV
+- **normalizeData** — auto-resolves `feature.programme` backlinks from `programme.workstreams[]` on load
+
+---
+
+## [0.5.13] — 2026-04-01
+
+### Improved
+
+#### Governance scope: programme-level view
+
+The governance scope toggle now cycles through three levels: **Feature → Epic → Programme**.
+
+- **Programme scope** aggregates all workstream features belonging to a programme into a single governance row. Gate status is evaluated across all stories from all member features — if any workstream has HIGH review findings, the programme row shows fail.
+- Programme membership is resolved via `programme.workstreams[]` (array of feature slugs on the programme entry) with fallback to `feature.programme` (backlink slug on each feature).
+- When no programmes are defined in `pipeline-state.json`, programme scope falls back to feature scope gracefully.
+- Row meta shows workstream count (e.g. "3 workstreams") instead of stage label.
+- `/programme` skill updated to write `workstreams: [feature-slugs]` on programme creation and set `programme: "slug"` on each member feature.
+
+---
+
+## [0.5.12] — 2026-04-01
+
+### Improved
+
+#### Governance view: compact criteria, resolved artefact links, scope toggle
+
+Three UX improvements to the governance board based on first real-repo usage:
+
+**Gate criteria reference collapsed.** The full SKILL.md descriptions were dominating the view. Gate criteria now display as compact chips (gate name + skill badge) with the full description in a native tooltip on hover. The full card grid is still accessible via an "Expand full gate criteria descriptions" toggle below. Header shortened from "Gate Criteria Reference" to "Gate Criteria".
+
+**Artefact links resolve to files.** Gate status "artefact" links previously pointed to folders (`../artefacts/{slug}/review/`), which opened a directory listing rather than a readable file. They now resolve to the first story's specific artefact file (e.g. `{story-slug}-review-1.md`, `{story-slug}-test-plan.md`, `{story-slug}-dor.md`). Trace and release links were already file-specific and are unchanged.
+
+**Scope toggle: feature vs epic.** New "Scope: Feature / Epic" button in governance controls. Feature scope (default) shows one matrix row per feature — unchanged from before. Epic scope shows one row per epic, with the feature name prefixed (`Feature → Epic`). Gate status in epic scope evaluates only stories within that epic, giving finer-grained governance visibility without changing the underlying gate logic.
+
+---
+
 ## [0.5.11] — 2026-04-01
 
 ### Fixed
