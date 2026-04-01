@@ -13,6 +13,8 @@ import {
   validateReviewTrace,
   buildAssuranceRecord,
   emitAssuranceRecord,
+  computeEntryHash,
+  detectEntryTampering,
 } from '../lib/assurance-validator';
 import { AssuranceRecord } from '../types/trace';
 
@@ -28,6 +30,30 @@ export async function runAssuranceAgent(config: {
   const reviewEntry = entries.find(e => e.agentIdentity === 'review');
   if (!devEntry || !reviewEntry) {
     throw new Error('Trace log must contain both dev and review entries');
+  }
+
+  // S6 AC3 re-verification: if a prior assurance record exists in the trace, check
+  // whether the dev or review entries have been modified since it was written.
+  const priorAssuranceEntry = entries.find(e => e.agentIdentity === 'assurance');
+  if (priorAssuranceEntry) {
+    const priorRecord = priorAssuranceEntry as unknown as AssuranceRecord;
+    const tamperCheck = detectEntryTampering(devEntry, reviewEntry, priorRecord);
+    if (tamperCheck.tampered) {
+      const tamperRecord: AssuranceRecord = {
+        ...priorRecord,
+        verdict: 'escalate',
+        timestamp: new Date().toISOString(),
+        criteriaOutcomes: tamperCheck.reasons.map(reason => ({
+          criterion: 'ENTRY_INTEGRITY',
+          result: 'fail',
+          reason,
+        })),
+      };
+      emitAssuranceRecord(tracePath, tamperRecord);
+      return tamperRecord;
+    }
+    // No tampering detected — return the existing record without re-appending
+    return priorRecord;
   }
 
   // Load assurance skill (for this agent's own promptHash + version)
@@ -48,13 +74,17 @@ export async function runAssuranceAgent(config: {
     reviewSkillPath,
   );
 
-  // AC4: build and emit assurance record
+  // AC4: build and emit assurance record (with entry hashes for tamper-evidence)
+  const devEntryHash = computeEntryHash(devEntry);
+  const reviewEntryHash = computeEntryHash(reviewEntry);
   const record = buildAssuranceRecord({
     skillName: 'feature-assurance',
     skillVersion: assuranceSkillVersion,
     promptHash: assurancePromptHash,
     devResult,
     reviewResult,
+    devEntryHash,
+    reviewEntryHash,
   });
 
   emitAssuranceRecord(tracePath, record);

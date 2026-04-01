@@ -35,6 +35,12 @@ export interface AssuranceRecord {
   criteriaOutcomes: CriterionResult[];
   verdict: 'closed' | 'escalate';
   timestamp: string;
+  /** SHA-256 of the serialised dev trace entry at the time the assurance record was written.
+   *  Used for tamper-evidence: recomputing this hash and comparing detects any post-hoc
+   *  modification to the dev entry, including changes to criteriaResults field values. */
+  devEntryHash: string;
+  /** SHA-256 of the serialised review trace entry at the time the assurance record was written. */
+  reviewEntryHash: string;
 }
 
 export interface ReviewTraceEntry extends BaseAgentTrace {

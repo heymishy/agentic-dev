@@ -829,6 +829,44 @@ This design means the assurance record's cryptographic claims are independently 
 
 ---
 
+## Trace log tamper-evidence
+
+### Mechanism
+
+When the assurance agent writes its assurance record, it computes a SHA-256 hash of the serialised JSON of both the dev trace entry and the review trace entry at that exact moment, and stores these as `devEntryHash` and `reviewEntryHash` fields inside the assurance record itself. Any subsequent modification to either entry — including changing a field value inside the `criteriaResults` array — will produce a hash that no longer matches the stored value.
+
+To verify trace integrity manually, serialise the dev entry to JSON (exactly as stored), compute its SHA-256, and compare against `devEntryHash` in the assurance record:
+
+```bash
+node -e "
+  const fs = require('fs');
+  const crypto = require('crypto');
+  const lines = fs.readFileSync('./trace.jsonl', 'utf-8').trim().split('\n');
+  const devEntry = JSON.parse(lines[0]);
+  const assuranceRecord = JSON.parse(lines[2]);
+  const recomputed = crypto.createHash('sha256').update(JSON.stringify(devEntry)).digest('hex');
+  console.log('Stored:     ', assuranceRecord.devEntryHash);
+  console.log('Recomputed: ', recomputed);
+  console.log('Match:      ', recomputed === assuranceRecord.devEntryHash ? 'YES' : 'NO — TAMPERED');
+"
+```
+
+If the assurance agent is re-run against a trace that already contains an assurance record, it enters re-verification mode: it recomputes both entry hashes and compares them against the stored values. A mismatch produces `verdict: escalate` with criterion `ENTRY_INTEGRITY` and a reason identifying which entry was modified.
+
+### What this protects against
+
+Modifications to any field in the dev or review trace entries after the assurance record is written — including post-hoc changes to `criteriaResults` values (e.g. changing a criterion result from `"fail"` to `"pass"` to falsify the governance record). These changes are detectable because the hash stored in the immutable assurance record will no longer match the current entry content.
+
+### What this does not protect against
+
+This is a prototype-level control, not a production cryptographic guarantee. It does not protect against a sophisticated attacker who modifies the dev or review entry and also updates the `devEntryHash`/`reviewEntryHash` fields in the assurance record to match. The mechanism assumes the assurance record itself is not tampered with. It also does not prevent tampering before the assurance agent has run (there is no pre-assurance snapshot stored).
+
+### Next-phase production hardening
+
+A production implementation would introduce: hash chaining (each entry's hash incorporates the hash of the preceding entry, making isolated surgery undetectable), cryptographically signed entries (each entry signed with a key only the emitting agent holds), write-once append-only storage (cloud log sink or WORM-compliant storage that physically prevents modification), and an independent audit service that re-runs verification on a schedule and alerts on any inconsistency.
+
+---
+
 ## Repo structure
 
 ```

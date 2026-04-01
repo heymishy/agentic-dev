@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import { computeSkillHash } from './skill-loader';
 import { AssuranceRecord, CriterionResult } from '../types/trace';
 
@@ -42,6 +43,39 @@ export function readTraceLog(filePath: string): TraceLogEntry[] {
   });
 }
 
+/**
+ * Compute a SHA-256 hash of the serialised trace entry.
+ * Stored in the assurance record so any post-hoc modification — including
+ * changes to criteriaResults field values — is detectable on re-verification.
+ */
+export function computeEntryHash(entry: TraceLogEntry): string {
+  return crypto.createHash('sha256').update(JSON.stringify(entry)).digest('hex');
+}
+
+/**
+ * Re-verification check: compare current entry hashes against those stored in a
+ * previously written assurance record.  Returns a finding for any mismatch.
+ */
+export function detectEntryTampering(
+  devEntry: TraceLogEntry,
+  reviewEntry: TraceLogEntry,
+  storedRecord: AssuranceRecord,
+): { tampered: boolean; reasons: string[] } {
+  const reasons: string[] = [];
+  if (computeEntryHash(devEntry) !== storedRecord.devEntryHash) {
+    reasons.push(
+      'Dev trace entry has been modified since the assurance record was written ' +
+        '(criteriaResults or other field tampering detected)',
+    );
+  }
+  if (computeEntryHash(reviewEntry) !== storedRecord.reviewEntryHash) {
+    reasons.push(
+      'Review trace entry has been modified since the assurance record was written',
+    );
+  }
+  return { tampered: reasons.length > 0, reasons };
+}
+
 export function validateDevTrace(
   devEntry: TraceLogEntry,
   skillPath: string,
@@ -71,6 +105,8 @@ export function buildAssuranceRecord(params: {
   promptHash: string;
   devResult: { devHashMatch: boolean };
   reviewResult: { reviewHashMatch: boolean; reviewsDevHashMatch: boolean };
+  devEntryHash: string;
+  reviewEntryHash: string;
 }): AssuranceRecord {
   const devVerified = params.devResult.devHashMatch;
   const reviewVerified =
@@ -108,6 +144,8 @@ export function buildAssuranceRecord(params: {
     criteriaOutcomes,
     verdict: allPass ? 'closed' : 'escalate',
     timestamp: new Date().toISOString(),
+    devEntryHash: params.devEntryHash,
+    reviewEntryHash: params.reviewEntryHash,
   };
 }
 

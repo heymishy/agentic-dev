@@ -9,6 +9,8 @@ import {
   validateDevTrace,
   validateReviewTrace,
   buildAssuranceRecord,
+  computeEntryHash,
+  detectEntryTampering,
   TraceLogEntry,
 } from '../../src/lib/assurance-validator';
 
@@ -164,12 +166,16 @@ describe('validateReviewTrace', () => {
 
 describe('buildAssuranceRecord', () => {
   test('emits record with all required fields and closed verdict', () => {
+    const devHash = 'a'.repeat(64);
+    const reviewHash = 'b'.repeat(64);
     const record = buildAssuranceRecord({
       skillName: 'feature-assurance',
       skillVersion: '1.0.0',
       promptHash: 'c'.repeat(64),
       devResult: { devHashMatch: true },
       reviewResult: { reviewHashMatch: true, reviewsDevHashMatch: true },
+      devEntryHash: devHash,
+      reviewEntryHash: reviewHash,
     });
 
     expect(record.agentIdentity).toBe('assurance');
@@ -184,6 +190,8 @@ describe('buildAssuranceRecord', () => {
     expect(record.criteriaOutcomes).toHaveLength(3);
     expect(record.criteriaOutcomes.every(c => c.result === 'pass')).toBe(true);
     expect(new Date(record.timestamp).toISOString()).toBe(record.timestamp);
+    expect(record.devEntryHash).toBe(devHash);
+    expect(record.reviewEntryHash).toBe(reviewHash);
   });
 
   test('emits escalate verdict when dev hash does not match', () => {
@@ -193,6 +201,8 @@ describe('buildAssuranceRecord', () => {
       promptHash: 'c'.repeat(64),
       devResult: { devHashMatch: false },
       reviewResult: { reviewHashMatch: true, reviewsDevHashMatch: false },
+      devEntryHash: 'd'.repeat(64),
+      reviewEntryHash: 'e'.repeat(64),
     });
 
     expect(record.verdict).toBe('escalate');
@@ -202,5 +212,116 @@ describe('buildAssuranceRecord', () => {
     );
     expect(devCriterion?.result).toBe('fail');
     expect(devCriterion?.reason).toBeDefined();
+  });
+});
+
+// ── S6 AC3: computeEntryHash + detectEntryTampering ───────────────────────
+
+describe('computeEntryHash', () => {
+  test('returns consistent SHA-256 hex string for the same entry', () => {
+    const entry: TraceLogEntry = {
+      agentIdentity: 'dev',
+      skillName: 'feature-dev',
+      skillVersion: '1.0.0',
+      promptHash: 'a'.repeat(64),
+      hashAlgorithm: 'sha256',
+      timestamp: '2026-04-01T00:00:00.000Z',
+    };
+    const h1 = computeEntryHash(entry);
+    const h2 = computeEntryHash(entry);
+    expect(h1).toBe(h2);
+    expect(h1).toHaveLength(64);
+    expect(/^[0-9a-f]+$/.test(h1)).toBe(true);
+  });
+
+  test('returns different hash when criteriaResults is modified', () => {
+    const base: TraceLogEntry = {
+      agentIdentity: 'dev',
+      skillName: 'feature-dev',
+      skillVersion: '1.0.0',
+      promptHash: 'a'.repeat(64),
+      hashAlgorithm: 'sha256',
+      timestamp: '2026-04-01T00:00:00.000Z',
+      criteriaResults: [{ criterion: 'HAS_IMPL', result: 'fail' }],
+    };
+    const tampered: TraceLogEntry = {
+      ...base,
+      criteriaResults: [{ criterion: 'HAS_IMPL', result: 'pass' }],
+    };
+    expect(computeEntryHash(base)).not.toBe(computeEntryHash(tampered));
+  });
+});
+
+describe('detectEntryTampering', () => {
+  test('returns tampered:false when entry hashes match stored hashes', () => {
+    const devEntry: TraceLogEntry = {
+      agentIdentity: 'dev',
+      skillName: 'feature-dev',
+      skillVersion: '1.0.0',
+      promptHash: 'a'.repeat(64),
+      hashAlgorithm: 'sha256',
+      timestamp: '2026-04-01T00:00:00.000Z',
+    };
+    const reviewEntry: TraceLogEntry = {
+      agentIdentity: 'review',
+      skillName: 'feature-review',
+      skillVersion: '1.0.0',
+      promptHash: 'b'.repeat(64),
+      hashAlgorithm: 'sha256',
+      timestamp: '2026-04-01T00:00:00.000Z',
+    };
+    const storedRecord = buildAssuranceRecord({
+      skillName: 'feature-assurance',
+      skillVersion: '1.0.0',
+      promptHash: 'c'.repeat(64),
+      devResult: { devHashMatch: true },
+      reviewResult: { reviewHashMatch: true, reviewsDevHashMatch: true },
+      devEntryHash: computeEntryHash(devEntry),
+      reviewEntryHash: computeEntryHash(reviewEntry),
+    });
+    const { tampered } = detectEntryTampering(devEntry, reviewEntry, storedRecord);
+    expect(tampered).toBe(false);
+  });
+
+  test('returns tampered:true with reason when criteriaResults is modified', () => {
+    const devEntry: TraceLogEntry = {
+      agentIdentity: 'dev',
+      skillName: 'feature-dev',
+      skillVersion: '1.0.0',
+      promptHash: 'a'.repeat(64),
+      hashAlgorithm: 'sha256',
+      timestamp: '2026-04-01T00:00:00.000Z',
+      criteriaResults: [{ criterion: 'HAS_IMPL', result: 'fail' }],
+    };
+    const reviewEntry: TraceLogEntry = {
+      agentIdentity: 'review',
+      skillName: 'feature-review',
+      skillVersion: '1.0.0',
+      promptHash: 'b'.repeat(64),
+      hashAlgorithm: 'sha256',
+      timestamp: '2026-04-01T00:00:00.000Z',
+    };
+    const storedRecord = buildAssuranceRecord({
+      skillName: 'feature-assurance',
+      skillVersion: '1.0.0',
+      promptHash: 'c'.repeat(64),
+      devResult: { devHashMatch: true },
+      reviewResult: { reviewHashMatch: true, reviewsDevHashMatch: true },
+      devEntryHash: computeEntryHash(devEntry),
+      reviewEntryHash: computeEntryHash(reviewEntry),
+    });
+    // Simulate tampering: change criteriaResults from fail to pass
+    const tamperedEntry: TraceLogEntry = {
+      ...devEntry,
+      criteriaResults: [{ criterion: 'HAS_IMPL', result: 'pass' }],
+    };
+    const { tampered, reasons } = detectEntryTampering(
+      tamperedEntry,
+      reviewEntry,
+      storedRecord,
+    );
+    expect(tampered).toBe(true);
+    expect(reasons).toHaveLength(1);
+    expect(reasons[0]).toMatch(/criteriaResults/);
   });
 });
