@@ -28,6 +28,7 @@
               "dorStatus": "signed-off",
               "dodStatus": "complete",
               "prStatus": "merged",
+              "verifyStatus": "passed",
               "releaseReady": false,
               "testPlan": { "status": "written", "totalTests": 12, "passing": 12, "acTotal": 5, "acVerified": 5 },
               "tasks": [
@@ -47,6 +48,7 @@
               "dodStatus": "complete",
               "prStatus": "merged",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/2",
+              "verifyStatus": "passed",
               "updatedAt": "2026-03-31T08:30:00Z",
               "releaseReady": true,
               "testPlan": { "status": "all-passing", "totalTests": 26, "passing": 26, "acTotal": 6, "acVerified": 6 }
@@ -61,6 +63,7 @@
               "dodStatus": "complete",
               "prStatus": "merged",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/3",
+              "verifyStatus": "passed",
               "updatedAt": "2026-03-31T09:00:00Z",
               "releaseReady": true,
               "testPlan": { "status": "all-passing", "totalTests": 15, "passing": 15, "acTotal": 5, "acVerified": 5 },
@@ -80,6 +83,7 @@
               "dorStatus": "signed-off",
               "dodStatus": "complete",
               "prStatus": "merged",
+              "verifyStatus": "passed",
               "releaseReady": true,
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/4",
               "updatedAt": "2026-04-01T08:00:00Z",
@@ -108,6 +112,7 @@
               "dodStatus": "complete",
               "prStatus": "merged",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/5",
+              "verifyStatus": "passed",
               "releaseReady": true,
               "updatedAt": "2026-04-01T10:00:00Z",
               "testPlan": { "status": "all-passing", "totalTests": 57, "passing": 57, "acTotal": 5, "acVerified": 5 }
@@ -120,6 +125,7 @@
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
               "prStatus": "merged",
+              "verifyStatus": "partial",
               "updatedAt": "2026-04-01T12:00:00Z",
               "ac1BlockedReason": "DL-005: non-engineer participant dry run not yet completed — AC1/AC2 pending",
               "testPlan": { "status": "partial", "totalTests": 63, "passing": 63, "acTotal": 5, "acVerified": 3, "deferredACs": ["AC1", "AC2"] }
@@ -134,6 +140,7 @@
               "dodStatus": "pending",
               "prStatus": "merged",
               "prUrl": "https://github.com/heymishy/agentic-dev/pull/6",
+              "verifyStatus": "passed",
               "updatedAt": "2026-04-01T19:00:00Z",
               "testPlan": { "status": "complete", "totalTests": 76, "passing": 76, "acTotal": 5, "acVerified": 5 },
               "ac4Note": "Elapsed 5 min ✅; 4 requests ❌ (threshold ≤2) — AC5 triggered; reframe paragraph added to README demo section. Repeat dry run pending before production release."

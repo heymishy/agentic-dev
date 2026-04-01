@@ -2130,7 +2130,7 @@ function gateStatus(feature, gateId) {
 
   if (gateId === 'test-plan') {
     if (stories.length === 0) status = { state: 'na', label: 'N/A', artefact: artefactFor(gateId) };
-    const written = stories.filter(s => s.testPlan && s.testPlan.status === 'written' && (s.testPlan.totalTests || 0) > 0).length;
+    const written = stories.filter(s => s.testPlan && ['written','all-passing','complete','partial'].includes(s.testPlan.status) && (s.testPlan.totalTests || 0) > 0).length;
     if (written === stories.length) status = { state: 'pass', label: 'Written', artefact: artefactFor(gateId) };
     else if (written > 0) status = { state: 'warn', label: 'Partial', artefact: artefactFor(gateId) };
     else status = { state: 'fail', label: 'Missing', artefact: artefactFor(gateId) };
