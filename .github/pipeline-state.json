@@ -128,15 +128,15 @@
             {
               "slug": "s7-self-service-packaging",
               "name": "S7: Self-service packaging — Docker Compose, README, 30-min bar",
-              "stage": "branch-setup",
+              "stage": "verify-completion",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
               "worktree": ".worktrees/s7-self-service-packaging",
               "branch": "feature/s7-self-service-packaging",
-              "updatedAt": "2026-04-01T14:00:00Z",
-              "ac4BlockedReason": "DL-005: dry-run participant not yet arranged — AC4/AC5 deferred",
-              "testPlan": { "status": "partial", "totalTests": 76, "passing": 76, "acTotal": 5, "acVerified": 3, "deferredACs": ["AC4", "AC5"] }
+              "updatedAt": "2026-04-01T18:00:00Z",
+              "testPlan": { "status": "complete", "totalTests": 76, "passing": 76, "acTotal": 5, "acVerified": 5 },
+              "ac4Note": "Elapsed 5 min ✅; 4 requests ❌ (threshold ≤2) — AC5 triggered; reframe paragraph added to README demo section. Repeat dry run pending before production release."
             }
           ]
         }
@@ -187,9 +187,9 @@
           "name": "Time to complete audit trail — uninitiated person",
           "target": "Under 30 minutes, no more than 2 assistance requests",
           "baseline": "Not yet established",
-          "signal": "not-yet-measured",
-          "lastMeasured": null,
-          "evidence": null,
+          "signal": "at-risk",
+          "lastMeasured": "2026-04-01",
+          "evidence": "Dry run 1: elapsed ~5 min ✅ (target <30 min). Assistance requests: 4 ❌ (target ≤2). AC5 triggered — reframe paragraph added to README demo section explaining fixture vs real model output. Signal at-risk pending second dry run confirmation. Results in verification/m4-dry-run-results.md.",
           "contributingStories": ["s7-self-service-packaging"]
         },
         {
@@ -197,10 +197,10 @@
           "name": "Trace log is self-interpreting to a non-engineer reader",
           "target": "3/3 questions answered correctly; question 1 failure is blocking",
           "baseline": "0/3 — no trace exists",
-          "signal": "not-yet-measured",
-          "lastMeasured": null,
-          "evidence": null,
-          "contributingStories": ["s6-trace-schema-tamper-evidence"]
+          "signal": "at-risk",
+          "lastMeasured": "2026-04-01",
+          "evidence": "Dry run 1: Q1 correct ✅; Q2 and Q3 initially wrong — participant confused fixture output with real AI output. Root cause addressed by AC5 README reframe. Signal at-risk until second dry run confirms 3/3 correct without Q2/Q3 confusion.",
+          "contributingStories": ["s6-trace-schema-tamper-evidence", "s7-self-service-packaging"]
         },
         {
           "id": "m6",
