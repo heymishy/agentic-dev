@@ -113,4 +113,8 @@ Update `.github/pipeline-state.json` in the **project repository** after produci
 - If important issues found (no criticals): set `health: "amber"`
 - If clean: set `health: "green"`, clear `blocker`
 
+**Parent propagation (apply to every inner loop state write):**
+- Always update the feature-level `updatedAt: [now]` — the visualiser staleness timer reads this field; if only the story `updatedAt` is written the feature card shows "STALE PROC"
+- Recompute the parent epic `status` from its stories: if every story in the epic is done (`dodStatus: "complete"`, `prStatus: "merged"`, or all tasks `tddState: "committed"`), set epic `status: "complete"`; if any story has an active inner loop stage, set `status: "in-progress"`; otherwise `"not-started"`
+
 **Human review note:** If a human performs a code review outside a skill session and resolves findings, update `health` and clear `blocker` manually in `pipeline-state.json`, or run `/workflow` to reconcile.
