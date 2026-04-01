@@ -17,7 +17,7 @@
   To evolve: update this file, open a PR, tag tech lead for review.
 -->
 
-**Last updated:** 2026-03-22
+**Last updated:** 2026-04-02
 **Maintained by:** Repo owner (solo)
 
 ---
@@ -33,9 +33,72 @@ It contains:
 - `.github/scripts/` — Node.js pre-commit hooks and validators
 - `artefacts/` — per-feature pipeline artefacts produced during delivery
 
-Architecture guardrails apply to changes to the viz (`pipeline-viz.html`), the schema (`pipeline-state.schema.json`), and any new scripts added under `.github/scripts/`.
+Architecture guardrails apply to changes to the viz (`pipeline-viz.html`), the schema (`pipeline-state.schema.json`), any new scripts added under `.github/scripts/`, and **all prototype source code under `src/`**.
 
 Skill files and templates are content, not code — they are governed by pipeline process, not these guardrails.
+
+---
+
+## Prototype Codebase Architecture
+
+This section governs the governance prototype itself: the TypeScript agent scripts and supporting library code under `src/`. These constraints were established during S1–S7 and apply to all subsequent stories (S8+).
+
+### Agent Layer (`src/agents/`)
+
+- **Three agents, one responsibility each.** `dev-agent.ts` governs implementation work, `review-agent.ts` governs trace validation, `assurance-agent.ts` governs independent cold-start verification. Agents must not take on each other's responsibilities.
+- **Every agent file must guard `main()` with `require.main === module`** (DL-008). Without this guard, importing an agent module in a test triggers queue execution at parse time and crashes the Jest worker. This is mandatory — not optional.
+- **Agent invocation via `spawnSync` with explicit args array** (DL-007). Do not use `execSync` with a shell string — path spaces in worktree paths cause arg splitting. Use `spawnSync(process.execPath, [TS_NODE_BIN, agentFile, ...args])`. See S1 integration test for the canonical pattern.
+- **Cold-start independence is a hard architectural rule for the assurance agent.** The assurance agent must be invocable with no shared in-memory state, session variables, or execution context from the dev or review agents. The trace log file is the only allowed input channel from prior agents. Any change that creates implicit shared state between agents violates this constraint.
+- **Agent scripts must exit non-zero on failure.** The assurance agent calls `process.exit(1)` when `verdict === 'escalate'`. This is a required observable behaviour — not configurable. See DL-007 / S5 F2 fix.
+
+### Skills Registry (`skills-registry.json`)
+
+- **`skills-registry.json` at the repo root is the authority registry for all skill file paths.** Format: `{ "skill-name": "./relative/path/SKILL.md" }`. All agent scripts resolve skill paths from this registry — never by hardcoding a path.
+- **Changing which file is `feature-dev`, `feature-review`, or `feature-assurance` requires updating `skills-registry.json`.** This makes skill version changes auditable. Hardcoded skill paths anywhere in `src/` are a violation.
+- **Skills are read from the local filesystem only.** No API-based skill resolution, no network fetch, no dynamic download. The skill file at the configured path at invocation time is the governing version.
+
+### Trace Log (`trace.jsonl`)
+
+- **Trace log entries are append-only.** Use `fs.appendFileSync` — never `fs.writeFileSync` or any operation that truncates the log. The `emitAssuranceRecord()` and `emitTraceEntry()` functions must always append. `fs.appendFileSync` is the canonical reference (S4).
+- **Trace entries conform to `src/types/trace.ts`.** All three agents emit trace entries that satisfy the shared TypeScript interface. Adding new fields requires updating the interface — never ad-hoc inline additions. The interface is validated by `tsc --strict`.
+- **Every trace entry must contain all required fields: `agentIdentity`, `skillName`, `skillVersion`, `promptHash`, `hashAlgorithm`, `criteriaResults` (array), `decisionOutcome`, and `timestamp`.** Assurance entries additionally require `devHashMatch`, `reviewHashMatch`, `criteriaOutcomes[3]`, and `verdict`. Omitting a required field is a schema violation.
+- **Prompt hash is SHA-256 over raw skill file bytes.** Hash algorithm must be recorded as `hashAlgorithm: 'sha256'` explicitly in each trace entry so it can be independently verified. Do not assume the algorithm — record it.
+- **Field names in the trace are plain English, no abbreviations.** A non-engineer must be able to open the trace log and answer three governance questions without a data dictionary: (1) what policy governed this decision, (2) how was compliance verified, (3) who or what made the assurance call. Field names that require cross-referencing another document to interpret are a violation (M5 requirement).
+
+### Type System (`src/types/`)
+
+- **`src/types/trace.ts` is the canonical trace schema.** All agent trace entry types are defined here. Any new or modified trace entry type is a change to this file — not to the agent file directly.
+- **TypeScript strict mode (`tsc --strict`) must pass with zero errors at all times.** No `any` types, no implicit `any`, no unchecked null access. `strict: true` is non-negotiable (discovery constraint). CI runs `tsc --strict --noEmit` before tests.
+- **Return types must be explicit on all exported functions.** Inferred return types are permitted on file-local helpers only.
+
+### Queue (`queue/`)
+
+- **Queue semantics are folder-move atomics.** Tasks move from `inbox/` → `review/` → `quality-review/` → `done/` via `fs.renameSync`. No other queue implementation is permitted in the prototype phase. See ADR-005.
+- **Every queue transition is recorded in `queue/history.jsonl`.** Task ID, from-folder, to-folder, and ISO timestamp are mandatory on every transition entry. Missing a transition entry is a data integrity defect.
+- **Queue folders (`inbox/`, `review/`, `quality-review/`, `done/`) are created by `init-queue.js` only.** Agent scripts must not create queue folders on demand — they must fail if the queue is not initialised. This keeps the initialisation concern separated from the execution concern.
+
+### Testing Discipline
+
+- **Unit tests live in `tests/unit/`, integration tests in `tests/integration/`.** No mixing. Unit tests exercise pure functions in isolation. Integration tests exercise agent scripts via `spawnSync` against real filesystem fixtures.
+- **Integration tests use real filesystem fixtures, not mocks.** Testing queue transitions with mock `fs` calls does not give confidence in real behaviour — use `tmp` directories and real `fs` operations. See S1 integration test pattern.
+- **No test framework beyond Jest.** No Mocha, no Chai, no sinon. Jest's built-in matchers and `spawnSync` are sufficient for this prototype.
+- **CI must pass (unit + integration) before any story branches are merged.** A branch that breaks the existing test suite requires a fix before merge — not a workaround.
+
+---
+
+## Prototype Anti-Patterns
+
+| Anti-pattern | Reason | Approved alternative |
+|---|---|---|
+| Hardcoded skill file path in an agent script | Breaks auditability — changing the skill version leaves no trace | Resolve from `skills-registry.json` at runtime |
+| `execSync` with shell string for agent invocation in tests | Path spaces cause arg splitting; `execSync` spawns a shell layer with unpredictable quoting | `spawnSync(process.execPath, [TS_NODE_BIN, agentFile])` |
+| Agent `main()` executing at module import time | Crashes Jest workers before fixtures are set up | Guard with `if (require.main === module)` |
+| `fs.writeFileSync` on the trace log | Truncates prior entries; destroys audit trail integrity | `fs.appendFileSync` only |
+| Inline trace field definitions not in `src/types/trace.ts` | Schema diverges from the interface; `tsc` won't catch it | Define all trace types in `src/types/trace.ts`; import from there |
+| Any `any` type | Defeats the purpose of TypeScript strict mode; hides governance logic errors | Use explicit types; if a type is genuinely unknown, use `unknown` and narrow it |
+| Sharing state between agents via anything other than the trace log file | Violates cold-start independence; corrupts the isolation claim | Write to trace log; next agent reads from trace log only |
+| Creating queue folders in agent scripts | Conflates initialisation with execution; makes agents non-idempotent on a cold machine | Call `init-queue.js` before running agents |
+| Credentials, tokens, or org data in any committed file | Violates discovery constraint ("publicly shareable"); security risk | Use environment variables; document required env vars in README |
 
 ---
 
@@ -135,6 +198,9 @@ Skill files and templates are content, not code — they are governed by pipelin
 | ADR-002 | Active | Gates must use evidence fields, not stage-proxy | All `evaluateGate()` implementations |
 | ADR-003 | Active | Schema-first: fields defined before use | `pipeline-state.schema.json` evolution |
 | ADR-004 | Active | `context.yml` is the single config source of truth | Skill files, viz config reading |
+| ADR-005 | Active | Filesystem folder-move is the queue implementation | All agent queue interactions |
+| ADR-006 | Active | Trace log is append-only; `fs.appendFileSync` is the only write path | `src/agents/*.ts`, `src/lib/*.ts` |
+| ADR-007 | Active | TypeScript strict mode — mandatory, no exceptions | All `src/**/*.ts` files |
 
 ---
 
@@ -223,6 +289,72 @@ Governance audit found org/tool names hardcoded in skill files and the viz havin
 
 #### Revisit trigger
 If the viz gains a server-side rendering layer, direct `context.yml` reading becomes feasible and should be adopted.
+
+---
+
+### ADR-005: Filesystem folder-move is the queue implementation
+
+**Status:** Active
+**Date:** 2026-03-31
+**Decided by:** Hamish (DL-006)
+
+#### Context
+The original prototype design used Mission Control as the queue mechanism. During S1 scoping, Mission Control's alpha instability and Docker dependency were evaluated as risks. A filesystem queue using folder-moves and JSON task files was chosen as the replacement — simpler, no external dependencies, one Docker Compose command to start the full stack.
+
+#### Decision
+Task lifecycle is expressed as atomic `fs.renameSync` moves between five folders: `inbox/` → `review/` → `quality-review/` → `done/` (reject path: any stage → `inbox/` on assurance escalate). Task files are JSON. Every transition is appended to `queue/history.jsonl`. There is no database, message broker, or HTTP queue.
+
+#### Consequences
+**Easier:** No external service dependencies in development. Queue state is inspectable with any text editor. Deterministic for test fixtures.
+**Harder / constrained:** Not concurrent-safe (single-user prototype only). Not durable across system crashes. Not production-ready.
+**Off the table:** Any queue mechanism that requires a running service (Redis, RabbitMQ, SQS) or persistent process (MC, Kafka) for the S1–S7 phase.
+
+#### Revisit trigger
+When the governance loop is proved end-to-end (S7 complete) and model calls are added (S8+), evaluate replacing the filesystem queue with Mission Control or a lightweight message broker if concurrency or durability is required by the next phase.
+
+---
+
+### ADR-006: Trace log is append-only; `fs.appendFileSync` is the only permitted write path
+
+**Status:** Active
+**Date:** 2026-03-31
+**Decided by:** Hamish / Copilot (established in S4, formalised in S6)
+
+#### Context
+The governance claim depends on the integrity of the trace log. If prior trace entries can be silently modified after the assurance record is written, the audit trail is not trustworthy. This requires both a write-path constraint (how entries are added) and a tamper-evidence mechanism (how modification is detected). The write-path constraint is architectural; the tamper-evidence mechanism is an AC of S6.
+
+#### Decision
+All writes to any trace log file (`trace.jsonl`, `queue/history.jsonl`, or any file named `*.jsonl`) use `fs.appendFileSync` exclusively. `fs.writeFileSync`, `fs.createWriteStream` with flags other than `'a'`, and any method that truncates or overwrites are prohibited on trace files. Additionally, `criteriaResults` field-level integrity must be addressed by the S6 tamper-evidence mechanism — hash-only protection is insufficient (DL-010).
+
+#### Consequences
+**Easier:** Audit trail is structurally append-only; accidental truncation is prevented at the code level.
+**Harder / constrained:** No in-place correction of trace entries — corrections must be new entries. Requires discipline in S8+ when model response is added to the trace (model response must be appended, never re-written).
+**Off the table:** Any write operation that opens a trace file with mode `'w'` or equivalent.
+
+#### Revisit trigger
+If a formal cryptographic trace integrity mechanism is introduced (e.g. Merkle tree, hash chain, immutable append-only store), the `fs.appendFileSync` constraint can be relaxed in favour of the stronger mechanism — but only after that mechanism is in place and tested.
+
+---
+
+### ADR-007: TypeScript strict mode — mandatory, no exceptions
+
+**Status:** Active
+**Date:** 2026-03-30
+**Decided by:** Hamish (discovery constraint)
+
+#### Context
+The governance prototype's value proposition depends on the implementation being verifiable and auditable. Loose typing makes function contracts ambiguous, hides implicit `any` in governance logic (criteria evaluation, hash verification, trace validation), and reduces the legibility of the codebase to future reviewers. Strict mode was a discovery-level constraint before the first story was written.
+
+#### Decision
+`tsconfig.json` must have `"strict": true`. CI runs `tsc --strict --noEmit` before any test run. A branch that introduces a TypeScript strict-mode error blocks CI. No `@ts-ignore` or `@ts-expect-error` suppressions are permitted without a code comment explaining why the suppression is necessary and a linked issue to remove it. `any` types in public function signatures (exported from a module) are a blocking review finding.
+
+#### Consequences
+**Easier:** The type system documents the governance logic contracts. Refactors are safer. Reviewers can read function signatures without tracing through implementation.
+**Harder / constrained:** More upfront typing work. Third-party libraries without TypeScript types require `@types/` packages or explicit typed wrappers.
+**Off the table:** JavaScript files (`.js`) under `src/`. Incremental migration mode (`allowJs`). `"strict": false` or partial-strict workarounds (`strictNullChecks: false`).
+
+#### Revisit trigger
+Not applicable. If TypeScript is replaced entirely (e.g. the prototype is ported to Python for an enterprise context), define equivalent static analysis requirements before dropping this constraint.
 
 ---
 
