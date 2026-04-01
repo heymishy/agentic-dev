@@ -9,9 +9,9 @@
       "track": "standard",
       "stage": "branch-setup",
       "health": "green",
-      "updatedAt": "2026-04-01T12:00:00Z",
-      "worktree": ".worktrees/s6-trace-schema-tamper-evidence",
-      "branch": "feature/s6-trace-schema-tamper-evidence",
+      "updatedAt": "2026-04-01T14:00:00Z",
+      "worktree": ".worktrees/s7-self-service-packaging",
+      "branch": "feature/s7-self-service-packaging",
       "releaseReady": false,
       "epics": [
         {
@@ -128,11 +128,15 @@
             {
               "slug": "s7-self-service-packaging",
               "name": "S7: Self-service packaging — Docker Compose, README, 30-min bar",
-              "stage": "definition-of-ready",
+              "stage": "branch-setup",
               "health": "green",
               "reviewStatus": "passed",
               "dorStatus": "signed-off",
-              "testPlan": { "status": "written", "totalTests": 1, "passing": 0, "acTotal": 5, "acVerified": 0 }
+              "worktree": ".worktrees/s7-self-service-packaging",
+              "branch": "feature/s7-self-service-packaging",
+              "updatedAt": "2026-04-01T14:00:00Z",
+              "ac4BlockedReason": "DL-005: dry-run participant not yet arranged — AC4/AC5 deferred",
+              "testPlan": { "status": "partial", "totalTests": 76, "passing": 76, "acTotal": 5, "acVerified": 3, "deferredACs": ["AC4", "AC5"] }
             }
           ]
         }
