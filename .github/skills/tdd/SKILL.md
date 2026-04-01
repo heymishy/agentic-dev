@@ -193,6 +193,10 @@ Also update `updatedAt` on the story after each state change.
 
 If you can't write or run tests, set the story `health: "amber"` and record the reason in `blocker`.
 
+**Parent propagation (apply to every inner loop state write):**
+- Always update the feature-level `updatedAt: [now]` — the visualiser staleness timer reads this field; if only the story `updatedAt` is written the feature card shows "STALE PROC"
+- Recompute the parent epic `status` from its stories: if every story in the epic is done (`dodStatus: "complete"`, `prStatus: "merged"`, or all tasks `tddState: "committed"`), set epic `status: "complete"`; if any story has an active inner loop stage, set `status: "in-progress"`; otherwise `"not-started"`
+
 ---
 
 ## Repeat

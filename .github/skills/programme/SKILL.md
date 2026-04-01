@@ -297,7 +297,8 @@ Output:
 
 Update `.github/pipeline-state.json` in the **project repository** when programme state changes:
 
-- When a programme is created: add an entry to `programmes[]` with `slug`, `name`, `phase`, `health: "green"`, `updatedAt: [now]`
+- When a programme is created: add an entry to `programmes[]` with `slug`, `name`, `phase`, `health: "green"`, `workstreams: [array of feature slugs]`, `updatedAt: [now]`
+- When workstreams are added or removed: update the `workstreams` array to reflect the current set of feature slugs belonging to this programme
 - When a phase gate review runs: update `phase` to the current phase name, update `health` based on workstream readiness:
   - All workstreams meeting exit criteria → `health: "green"`
   - One or more at risk → `health: "amber"`, `blocker: "[workstream] at risk — [reason]"`
@@ -305,3 +306,4 @@ Update `.github/pipeline-state.json` in the **project repository** when programm
 - **On PROCEED:** advance `phase` to the next phase name, set `health: "green"`, clear `blocker`, `updatedAt: [now]`
 - **On HOLD:** set `health: "amber"` or `"red"` depending on severity, record reason in `blocker`, `updatedAt: [now]`
 - Each workstream is a separate feature entry in `features[]` — update those entries using the standard skill state updates as work progresses
+- Set `programme: "[programme-slug]"` on each workstream feature entry so the governance view can resolve programme membership in both directions
