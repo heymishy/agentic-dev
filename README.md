@@ -1,3 +1,93 @@
+## Prototype demo
+
+A three-agent agentic SDLC loop — dev agent writes code, review agent approves it, assurance agent signs it off and records a cryptographically-verifiable trace. Every trace entry is SHA-256 hashed at record time; the assurance agent's re-verification mode detects any subsequent tampering and escalates.
+
+### Prerequisites
+
+- **Git**
+- **Node.js 20+** (`node --version` should print `v20` or higher)
+- **Docker Desktop** (running)
+
+### Setup
+
+1. Clone the repository
+
+   ```bash
+   git clone https://github.com/heymishy/agentic-dev.git && cd agentic-dev
+   ```
+
+   **You should see:** the terminal changes to the `agentic-dev` directory.
+
+2. Install dependencies and initialise the queue
+
+   ```bash
+   npm install && node scripts/init-queue.js
+   ```
+
+   **You should see:** `Queue initialised at ./queue`
+
+3. Start the queue board
+
+   ```bash
+   docker compose up -d
+   ```
+
+   **You should see:** Docker start the `board` container — something like `✔ Container ... Started`. Open <http://localhost:3000> in your browser — the board shows four empty columns: Inbox, Review, Quality Review, Done. (To confirm: run `docker compose logs board` and look for `Queue board running at http://localhost:3000`.)
+
+### Walkthrough
+
+4. Create a task
+
+   ```bash
+   node scripts/create-task.js "Feature: add user auth"
+   ```
+
+   **You should see:** `Task created: task-<timestamp>`. Refresh the board — the task appears in the **Inbox** column.
+
+5. Run the dev agent
+
+   ```bash
+   npx ts-node src/agents/dev-agent.ts --registryPath ./skills-registry.json --tracePath ./trace.jsonl
+   ```
+
+   **You should see:** `Dev agent complete.` logged to the terminal.
+
+6. Run the review agent
+
+   ```bash
+   npx ts-node src/agents/review-agent.ts --registryPath ./skills-registry.json --tracePath ./trace.jsonl
+   ```
+
+   **You should see:** `Review agent complete.` logged to the terminal.
+
+7. Run the assurance agent
+
+   ```bash
+   npx ts-node src/agents/assurance-agent.ts --registryPath ./skills-registry.json --tracePath ./trace.jsonl
+   ```
+
+   **You should see:** `Assurance agent complete.` logged to the terminal. Refresh the board — the task moves to the **Done** column.
+
+8. Read the audit trail
+
+   ```bash
+   cat trace.jsonl
+   ```
+
+   **You should see:** three newline-delimited JSON entries, one per agent. Each entry includes `devEntryHash` and `reviewEntryHash` fields — SHA-256 fingerprints computed at assurance time for tamper detection.
+
+### Cold-start independence
+
+The three agents operate without any running infrastructure. They read from and write to the local filesystem only. No database, no message broker, and no cloud credentials are required. The queue board (Docker) is the only process that needs to be running, and it is read-only — the board never writes to the queue.
+
+### Trace log tamper-evidence
+
+Each `AssuranceRecord` in `trace.jsonl` contains a `devEntryHash` and a `reviewEntryHash` — SHA-256 digests of the dev and review trace entries computed at assurance time by `computeEntryHash`. If either entry is later modified, the stored hashes no longer match the live content.
+
+When run in re-verification mode (invoked against a `trace.jsonl` that already contains an assurance record), `detectEntryTampering` compares the live entry content against the stored hashes. Any mismatch causes the assurance agent to escalate — the record is written with an `ENTRY_INTEGRITY` criterion marked `FAIL` and `outcome: 'ESCALATED'`.
+
+---
+
 # Skills Pipeline
 
 An agentic SDLC pipeline for GitHub Copilot. Structures the full software delivery lifecycle — from raw idea through to production release — using a set of Copilot skills that enforce quality gates, produce traceable artefacts, and route work to the coding agent only when it is properly defined.
@@ -812,6 +902,20 @@ This creates all skill files, templates, the instruction file, and the artefacts
 | NFR AC verification confirmed | `/definition-of-done` | `/release` |
 | Chain health reported | `/trace` | (informational — MEDIUM finding if CSS gaps unaccepted) |
 | Phase gate metric review | `/metric-review` | Programme phase progression |
+
+---
+
+## Cold-start independence
+
+Each agent in the quality loop — dev, review, and assurance — runs as a separate Node.js process invocation. No agent shares module-level state, conversation context, or execution environment with any other agent. The only artefact that flows between agents is the append-only trace log file on the local filesystem.
+
+The assurance agent enforces this boundary explicitly:
+
+1. **Import-level isolation.** `assurance-agent.ts` has zero imports from `dev-agent.ts` or `review-agent.ts`. An automated test asserts this at build time.
+2. **Filesystem-only input.** The assurance agent reads the trace log file path from a command-line argument and loads both prior trace entries from disk on every invocation. It holds no cached or module-level copy of any prior agent's output.
+3. **Independent hash computation.** The assurance agent loads `feature-dev` and `feature-review` SKILL.md files directly from the filesystem and computes SHA-256 hashes independently. It does not reuse hashes recorded by any prior agent.
+
+This design means the assurance record's cryptographic claims are independently verifiable: the same versioned policy documents that governed the original decisions also governed the validation of those decisions. A reviewer can confirm this by inspecting the assurance agent's source and running the no-cross-imports test and cold-start integration test.
 
 ---
 

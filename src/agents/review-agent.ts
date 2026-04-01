@@ -20,7 +20,7 @@ export async function runReviewAgent(config: {
   registryPath: string;
   tracePath: string;
   devTraceFile: string;
-}): Promise<void> {
+}): Promise<{ decisionOutcome: 'proceed-to-quality-review' | 'reject-to-inbox' }> {
   const { registryPath, tracePath, devTraceFile } = config;
 
   // AC1: read dev trace from file path argument only — no module-level cache
@@ -65,6 +65,7 @@ export async function runReviewAgent(config: {
 
   // Append-only write to trace log
   emitReviewTraceEntry(tracePath, reviewEntry);
+  return { decisionOutcome };
 }
 
 async function main(): Promise<void> {
@@ -90,7 +91,17 @@ async function main(): Promise<void> {
     idx('--tracePath') >= 0 ? args[idx('--tracePath') + 1] : './trace.jsonl';
   const devTraceFile =
     idx('--devTraceFile') >= 0 ? args[idx('--devTraceFile') + 1] : './trace.jsonl';
-  await runReviewAgent({ registryPath, tracePath, devTraceFile });
+  const { decisionOutcome } = await runReviewAgent({ registryPath, tracePath, devTraceFile });
+  if (decisionOutcome === 'proceed-to-quality-review') {
+    const queueRoot = 'queue';
+    const reviewDir = path.join(queueRoot, 'review');
+    const qualityReview = path.join(queueRoot, 'quality-review');
+    const historyPath = path.join(queueRoot, 'history.jsonl');
+    const taskId = getTaskInDir(reviewDir);
+    moveTask(taskId, reviewDir, qualityReview);
+    appendHistory(taskId, 'review', 'quality-review', historyPath);
+  }
+  process.stdout.write('Review agent complete.\n');
 }
 
 // DL-008: guard required — prevents main() firing at import time (breaks integration tests)
