@@ -266,4 +266,8 @@ Update `.github/pipeline-state.json` in the **project repository** after the cho
 - **Merged locally:** set `stage: "branch-complete"`, `prStatus: "merged"`, `health: "green"`
 - **Branch kept / discarded:** set `stage: "verify-completion"` (no PR yet)
 
+**Parent propagation (apply to every inner loop state write):**
+- Always update the feature-level `updatedAt: [now]` — the visualiser staleness timer reads this field; if only the story `updatedAt` is written the feature card shows "STALE PROC"
+- Recompute the parent epic `status` from its stories: if every story in the epic is done (`dodStatus: "complete"`, `prStatus: "merged"`, or all tasks `tddState: "committed"`), set epic `status: "complete"`; if any story has an active inner loop stage, set `status: "in-progress"`; otherwise `"not-started"`
+
 **Human action note:** When a human merges the PR, update `prStatus: "merged"` in the state file, or run `/workflow` to reconcile - it will detect the merge from artefacts.
