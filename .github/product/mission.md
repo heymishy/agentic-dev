@@ -23,7 +23,7 @@
 
 <!-- Named personas or user groups — not generic "users".
      Include their context: what are they doing when they use this product?
-     Example: "Internal Westpac facilitators running discovery and ideation sessions." -->
+     Example: "Facilitators running discovery and ideation sessions." -->
 
 [FILL IN]
 

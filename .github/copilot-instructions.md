@@ -53,11 +53,11 @@ Then update `skills_upstream.remote` and `skills_upstream.strategy` in `context.
      This is loaded into every agent interaction and frames all semantic decisions.
      
      Example:
-     "This repo contains a lightweight prioritisation canvas tool for Westpac NZ 
+     "This repo contains a lightweight prioritisation canvas tool  
      workshop facilitation. Teams use it to plot ideas on a configurable 2x2 grid 
      (Impact vs Effort by default), add cards, and export results as JSON or CSV.
      The tool is session-based with local persistence only — no server, no PII stored.
-     Target users are internal Westpac facilitators running discovery and ideation sessions."
+     Target users are facilitators running discovery and ideation sessions."
 -->
 
 [FILL IN BEFORE COMMITTING]
